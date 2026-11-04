@@ -193,23 +193,66 @@ function closeModal(){ document.getElementById('modalBg').classList.remove('open
 document.getElementById('modalBg').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
 
 /* ================= DASHBOARD ================= */
+function dStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function vTotal(r){ return (parseFloat(r.total)||0) || ((parseFloat(r.comedor)||0)+(parseFloat(r.paraLlevar)||0)+(parseFloat(r.delivery)||0)); }
 async function rDash(){
   var el = document.getElementById('v-dash');
   el.innerHTML = '<div class="empty">Cargando…</div>';
   try {
-    var d = await api('dashboard', {});
-    if (!d.ok) throw new Error(d.error);
-    var b = d.dashboard;
+    var res = await Promise.all([
+      api('dashboard', {}),
+      api('list', { tab: 'ventas' }),
+      api('list', { tab: 'gastos' }),
+      api('list', { tab: 'nomina' })
+    ]);
+    var b = res[0].dashboard, ventas = res[1].rows||[], gastos = res[2].rows||[], nom = res[3].rows||[];
+    var now = new Date(), hoy = dStr(now);
+    var ayer = dStr(new Date(now.getTime()-864e5));
+    var vHoy = 0, vAyer = 0;
+    var last7 = [];
+    for (var i=6;i>=0;i--){ var dt = new Date(now.getTime()-i*864e5); last7.push({ f: dStr(dt), dw: 'D L M M J V S'[dt.getDay()*2]||'', v: 0 }); }
+    ventas.forEach(function(r){
+      var f = String(r.fecha||'').substring(0,10), t = vTotal(r);
+      if (f===hoy) vHoy += t;
+      if (f===ayer) vAyer += t;
+      for (var i=0;i<7;i++) if (last7[i].f===f) last7[i].v += t;
+    });
+    var chg = vAyer>0 ? Math.round((vHoy-vAyer)/vAyer*100) : (vHoy>0?100:0);
+    var chgHtml = vHoy===0&&vAyer===0 ? '' : '<div style="font-size:12px;color:'+(chg>=0?'var(--green)':'var(--red)')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg)+'% vs ayer</div>';
+    var maxV = Math.max.apply(null, last7.map(function(x){return x.v;}).concat([1]));
+    var bars = last7.map(function(x){
+      var h = Math.max(4, Math.round(x.v/maxV*64));
+      var wd = x.f.substring(5).replace('-','/');
+      return '<div style="flex:1;text-align:center"><div style="height:70px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;height:'+h+'px;background:'+(x.f===hoy?'var(--teal)':'#bcd9d8')+';border-radius:4px 4px 0 0"></div></div><div style="font-size:10px;color:var(--muted)">'+x.dw+'<br>'+wd+'</div></div>';
+    }).join('');
+    var w0 = dStr(new Date(now.getTime()-6*864e5));
+    var gCat = {}, gTot = 0;
+    gastos.forEach(function(r){
+      var f = String(r.fecha||'').substring(0,10);
+      if (f>=w0){ var c=r.categoria||'Otros', m=parseFloat(r.monto)||0; gCat[c]=(gCat[c]||0)+m; gTot+=m; }
+    });
+    var gTop = Object.keys(gCat).sort(function(a,b2){return gCat[b2]-gCat[a];}).slice(0,5);
+    var gHtml = gTop.map(function(c){
+      var pct = gTot>0?Math.round(gCat[c]/gTot*100):0;
+      return '<div class="row-item"><div><div class="t">'+esc(c)+'</div><div style="height:6px;background:#eee;border-radius:3px;margin-top:4px;width:140px"><div style="height:6px;width:'+pct+'%;background:var(--teal);border-radius:3px"></div></div></div><div class="amt">'+money(gCat[c])+'</div></div>';
+    }).join('') || '<div class="empty">Sin gastos esta semana</div>';
+    var nPend = nom.filter(function(r){ var p=String(r.pagado||'').toLowerCase(); return p!=='sí'&&p!=='si'; });
+    var nTot = nPend.reduce(function(a,r){return a+(parseFloat(r.neto)||0);},0);
     var inv = (b.inventarioBajo||[]).map(function(r){
       return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Mínimo: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
     }).join('') || '<div class="empty">Todo en niveles normales</div>';
+
     el.innerHTML =
       '<h2 class="st">Hoy · ' + esc(b.fecha) + '</h2>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Ventas hoy</div><div class="val money">'+money(b.ventasHoy)+'</div></div>' +
-        '<div class="card"><div class="lbl">Ventas 7 días</div><div class="val money">'+money(b.ventasSemana)+'</div></div>' +
-        '<div class="card"><div class="lbl">Gastos 7 días</div><div class="val">'+money(b.gastosSemana)+'</div></div>' +
-        '<div class="card"><div class="lbl">Utilidad 7 días</div><div class="val '+(b.utilidadSemana<0?'neg':'money')+'">'+money(b.utilidadSemana)+'</div></div>' +
+        '<div class="card"><div class="lbl">Ventas hoy</div><div class="val money">'+money(vHoy)+'</div>'+chgHtml+'</div>' +
+        '<div class="card"><div class="lbl">Utilidad 7 días</div><div class="val '+(b.utilidadSemana<0?'neg':'money')+'">'+money(b.utilidadSemana)+'</div><div style="font-size:12px;color:var(--muted)">Ventas '+money(b.ventasSemana)+'</div></div>' +
+      '</div>' +
+      '<h2 class="st">Ventas · últimos 7 días</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
+      '<h2 class="st">Gastos por categoría · 7 días ('+money(gTot)+')</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
+      '<div class="cards">' +
+        '<div class="card"><div class="lbl">Nómina pendiente</div><div class="val '+(nPend.length?'neg':'money')+'">'+money(nTot)+'</div><div style="font-size:12px;color:var(--muted)">'+nPend.length+' pago(s)</div></div>' +
+        '<div class="card"><div class="lbl">Inventario bajo</div><div class="val '+(b.inventarioBajo.length?'neg':'money')+'">'+b.inventarioBajo.length+'</div><div style="font-size:12px;color:var(--muted)">productos</div></div>' +
       '</div>' +
       '<h2 class="st">⚠️ Inventario bajo</h2><div class="list">'+inv+'</div>';
   } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
