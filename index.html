@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Costa Pacífica · CP1604</title>
+<style>
+:root{
+  --teal:#0e7c7b; --teal-d:#0a5f5e; --sand:#f7f3ea; --ink:#1e2a32;
+  --muted:#6b7d8a; --card:#ffffff; --line:#e5e0d3; --red:#c0392b; --green:#1e8e5a;
+  --amber:#d48806;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--sand); color:var(--ink); font-size:15px;}
+header.top{background:linear-gradient(135deg,var(--teal-d),var(--teal)); color:#fff;
+  padding:14px 16px; position:sticky; top:0; z-index:10;}
+header.top h1{margin:0; font-size:18px; letter-spacing:.3px;}
+header.top .sub{font-size:12px; opacity:.85;}
+.view{display:none; padding:14px 12px 90px; max-width:720px; margin:0 auto;}
+.view.active{display:block;}
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.card{background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.card .lbl{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
+.card .val{font-size:22px; font-weight:700; margin-top:2px;}
+.card .val.money{color:var(--teal-d);}
+.card .val.neg{color:var(--red);}
+.card.full{grid-column:1/-1;}
+.list{background:var(--card); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.row-item{padding:11px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.row-item:last-child{border-bottom:none;}
+.row-item .t{font-weight:600;}
+.row-item .s{font-size:12px; color:var(--muted);}
+.row-item .amt{font-weight:700; white-space:nowrap;}
+.badge{font-size:11px; padding:2px 8px; border-radius:20px; background:#eef6f5; color:var(--teal-d); font-weight:600;}
+.badge.warn{background:#fdf3e3; color:var(--amber);}
+.badge.bad{background:#fdecea; color:var(--red);}
+nav.bottom{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+  display:flex; z-index:10; padding-bottom:env(safe-area-inset-bottom);}
+nav.bottom button{flex:1; border:none; background:none; padding:9px 2px 7px; font-size:10px; color:var(--muted);
+  display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;}
+nav.bottom button .ic{font-size:19px;}
+nav.bottom button.on{color:var(--teal-d); font-weight:700;}
+.fab{position:fixed; right:16px; bottom:78px; width:56px; height:56px; border-radius:50%;
+  background:var(--teal); color:#fff; font-size:28px; border:none; box-shadow:0 3px 10px rgba(0,0,0,.25); cursor:pointer; z-index:9;}
+form.sheet{background:#fff; border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.1);}
+form.sheet label{display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; text-transform:uppercase; letter-spacing:.4px;}
+form.sheet input, form.sheet select, form.sheet textarea{width:100%; padding:10px; font-size:15px;
+  border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink);}
+form.sheet textarea{resize:vertical; min-height:60px;}
+.btn{display:block; width:100%; padding:13px; border:none; border-radius:10px; font-size:16px; font-weight:700;
+  background:var(--teal); color:#fff; cursor:pointer; margin-top:14px;}
+.btn.sec{background:#eef0f2; color:var(--ink);}
+.btn.danger{background:var(--red);}
+h2.st{font-size:16px; margin:4px 0 10px;}
+.toolbar{display:flex; gap:8px; margin-bottom:10px;}
+.toolbar input{flex:1; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:14px;}
+.login-wrap{max-width:340px; margin:60px auto 0; padding:20px; text-align:center;}
+.login-wrap .logo{font-size:44px;}
+.login-wrap h1{color:var(--teal-d); margin:8px 0 2px;}
+.login-wrap p{color:var(--muted); font-size:13px;}
+.login-wrap input{width:100%; padding:13px; font-size:18px; text-align:center; letter-spacing:6px;
+  border:1px solid var(--line); border-radius:10px; margin:14px 0;}
+.err{color:var(--red); font-size:13px; min-height:18px;}
+.empty{padding:26px; text-align:center; color:var(--muted); font-size:14px;}
+.modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; z-index:20;
+  align-items:flex-end; justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff; width:100%; max-width:720px; max-height:88vh; overflow-y:auto;
+  border-radius:16px 16px 0 0; padding:16px 16px 30px;}
+.modal h3{margin:4px 0 6px;}
+.x{float:right; border:none; background:none; font-size:22px; color:var(--muted); cursor:pointer;}
+table.rep{width:100%; border-collapse:collapse; font-size:13px; background:#fff; border-radius:12px; overflow:hidden;}
+table.rep th{background:var(--teal-d); color:#fff; padding:8px 6px; text-align:left; font-size:11px; text-transform:uppercase;}
+table.rep td{padding:8px 6px; border-bottom:1px solid var(--line);}
+table.rep tr.tot td{font-weight:700; background:#eef6f5;}
+</style>
+</head>
+<body>
+
+<div id="loginView">
+  <div class="login-wrap">
+    <div class="logo">🌊</div>
+    <h1>Costa Pacífica</h1>
+    <p>CP1604 · App de operación</p>
+    <input id="pinUser" type="text" placeholder="usuario" autocomplete="username" style="letter-spacing:1px;font-size:15px;text-align:left;">
+    <input id="pinCode" type="password" placeholder="••••" inputmode="numeric" autocomplete="current-password">
+    <div class="err" id="loginErr"></div>
+    <button class="btn" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<div id="appView" style="display:none">
+  <header class="top">
+    <h1>🌊 Costa Pacífica</h1>
+    <div class="sub" id="hdrSub">CP1604</div>
+  </header>
+
+  <div class="view" id="v-dash"></div>
+  <div class="view" id="v-ventas"></div>
+  <div class="view" id="v-gastos"></div>
+  <div class="view" id="v-personal"></div>
+  <div class="view" id="v-nomina"></div>
+  <div class="view" id="v-inventario"></div>
+  <div class="view" id="v-menu"></div>
+  <div class="view" id="v-prov"></div>
+
+  <button class="fab" id="fabBtn" onclick="openForm()">+</button>
+
+  <nav class="bottom" id="bottomNav">
+    <button data-v="dash" class="on" onclick="go('dash')"><span class="ic">📊</span>Panel</button>
+    <button data-v="ventas" onclick="go('ventas')"><span class="ic">💵</span>Ventas</button>
+    <button data-v="gastos" onclick="go('gastos')"><span class="ic">🧾</span>Gastos</button>
+    <button data-v="personal" onclick="go('personal')"><span class="ic">👥</span>Personal</button>
+    <button data-v="nomina" onclick="go('nomina')"><span class="ic">💸</span>Nómina</button>
+    <button data-v="inventario" onclick="go('inventario')"><span class="ic">📦</span>Invent.</button>
+    <button data-v="menu" onclick="go('menu')"><span class="ic">🍽️</span>Menú</button>
+    <button data-v="prov" onclick="go('prov')"><span class="ic">🚚</span>Prov.</button>
+  </nav>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="x" onclick="closeModal()">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG — se llena al desplegar ============ */
+var CFG = {
+  url: "%%BACKEND_URL%%",
+  token: "%%API_TOKEN%%"
+};
+</script>
+<script>
+/* ================= API ================= */
+var SUC = 'CP1604';
+async function api(action, params, isPost) {
+  params = params || {};
+  if (!isPost) {
+    var q = new URLSearchParams(Object.assign({ action: action, token: CFG.token }, params));
+    var r = await fetch(CFG.url + '?' + q.toString(), { cache: 'no-store' });
+    return r.json();
+  }
+  var r2 = await fetch(CFG.url, { method: 'POST', cache: 'no-store',
+    body: JSON.stringify(Object.assign({ action: action, token: CFG.token }, params)) });
+  return r2.json();
+}
+function money(n){ n = parseFloat(n)||0; return '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ================= LOGIN ================= */
+var ME = null;
+async function sha256hex(s){
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+async function doLogin(){
+  var u = document.getElementById('pinUser').value.trim().toLowerCase();
+  var p = document.getElementById('pinCode').value.trim();
+  var err = document.getElementById('loginErr');
+  err.textContent = 'Verificando…';
+  try {
+    var d = await api('list', { tab: 'usuarios' });
+    if (!d.ok) throw new Error(d.error || 'Error de conexión');
+    var h = await sha256hex(p);
+    var found = (d.rows||[]).find(function(r){
+      return String(r.username||'').toLowerCase()===u && String(r.pinHash)===h && String(r.activo).toLowerCase()!=='no';
+    });
+    if (!found) { err.textContent = 'Usuario o PIN incorrecto'; return; }
+    ME = found;
+    document.getElementById('loginView').style.display='none';
+    document.getElementById('appView').style.display='block';
+    document.getElementById('hdrSub').textContent = 'CP1604 · ' + (ME.nombre||ME.username);
+    go('dash');
+  } catch(e){ err.textContent = 'Error: ' + e.message; }
+}
+
+/* ================= NAV ================= */
+var CUR = 'dash';
+function go(v){
+  CUR = v;
+  document.querySelectorAll('.view').forEach(function(x){ x.classList.remove('active'); });
+  document.getElementById('v-'+v).classList.add('active');
+  document.querySelectorAll('#bottomNav button').forEach(function(b){ b.classList.toggle('on', b.dataset.v===v); });
+  document.getElementById('fabBtn').style.display = (v==='dash') ? 'none' : 'block';
+  RENDER[v]();
+}
+function openModal(html){ document.getElementById('modalBody').innerHTML = html; document.getElementById('modalBg').classList.add('open'); }
+function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+document.getElementById('modalBg').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+/* ================= DASHBOARD ================= */
+async function rDash(){
+  var el = document.getElementById('v-dash');
+  el.innerHTML = '<div class="empty">Cargando…</div>';
+  try {
+    var d = await api('dashboard', {});
+    if (!d.ok) throw new Error(d.error);
+    var b = d.dashboard;
+    var inv = (b.inventarioBajo||[]).map(function(r){
+      return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Mínimo: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
+    }).join('') || '<div class="empty">Todo en niveles normales</div>';
+    el.innerHTML =
+      '<h2 class="st">Hoy · ' + esc(b.fecha) + '</h2>' +
+      '<div class="cards">' +
+        '<div class="card"><div class="lbl">Ventas hoy</div><div class="val money">'+money(b.ventasHoy)+'</div></div>' +
+        '<div class="card"><div class="lbl">Ventas 7 días</div><div class="val money">'+money(b.ventasSemana)+'</div></div>' +
+        '<div class="card"><div class="lbl">Gastos 7 días</div><div class="val">'+money(b.gastosSemana)+'</div></div>' +
+        '<div class="card"><div class="lbl">Utilidad 7 días</div><div class="val '+(b.utilidadSemana<0?'neg':'money')+'">'+money(b.utilidadSemana)+'</div></div>' +
+      '</div>' +
+      '<h2 class="st">⚠️ Inventario bajo</h2><div class="list">'+inv+'</div>';
+  } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+</script>
+<script>
+/* ================= TAB DEFINITIONS ================= */
+var CATS_GASTO = ['Mercancía','Nómina','Renta','Servicios','Desechables','Equipo','Limpieza','Marketing','Reparaciones','Otros'];
+var CATS_INV = ['Cocina','Barra','Desechables','Limpieza'];
+var CATS_MENU = ['Entradas','Mariscos','Tacos','Bebidas','Postres','Especiales'];
+var PUESTOS = ['Cocinero','Mesero','Bartender','Hostess','Corredor','Lavaplatos','Gerente','Cajero','Limpieza'];
+
+var TABDEF = {
+  ventas: { tab:'ventas', title:'Ventas', singular:'venta',
+    fields:[
+      {k:'fecha',l:'Fecha',t:'date',req:1},
+      {k:'comedor',l:'Comedor $',t:'number'},
+      {k:'paraLlevar',l:'Para llevar $',t:'number'},
+      {k:'delivery',l:'Delivery $',t:'number'},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ var t=(parseFloat(r.total)||0)||((parseFloat(r.comedor)||0)+(parseFloat(r.paraLlevar)||0)+(parseFloat(r.delivery)||0));
+      return {t:'Venta · '+esc(r.fecha||''), s:'Comedor '+money(r.comedor)+' · Llevar '+money(r.paraLlevar)+' · Delivery '+money(r.delivery), amt:money(t)}; } },
+  gastos: { tab:'gastos', title:'Gastos', singular:'gasto',
+    fields:[
+      {k:'fecha',l:'Fecha',t:'date',req:1},
+      {k:'categoria',l:'Categoría',t:'select',opts:CATS_GASTO,req:1},
+      {k:'proveedor',l:'Proveedor',t:'text'},
+      {k:'descripcion',l:'Descripción',t:'text',req:1},
+      {k:'monto',l:'Monto $',t:'number',req:1},
+      {k:'metodoPago',l:'Método de pago',t:'select',opts:['Efectivo','Tarjeta','Transferencia','Cheque']},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ return {t:esc(r.descripcion||''), s:esc(r.fecha||'')+' · '+esc(r.categoria||'')+(r.proveedor?' · '+esc(r.proveedor):''), amt:money(r.monto), badge:esc(r.categoria||'')}; } },
+  personal: { tab:'personal', title:'Personal', singular:'empleado',
+    fields:[
+      {k:'nombre',l:'Nombre',t:'text',req:1},
+      {k:'puesto',l:'Puesto',t:'select',opts:PUESTOS,req:1},
+      {k:'sueldoBase',l:'Sueldo base $',t:'number'},
+      {k:'tipoSueldo',l:'Tipo',t:'select',opts:['Hora','Semana','Quincena']},
+      {k:'telefono',l:'Teléfono',t:'text'},
+      {k:'fechaIngreso',l:'Fecha de ingreso',t:'date'},
+      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ var off = String(r.activo).toLowerCase()==='no';
+      return {t:esc(r.nombre||''), s:esc(r.puesto||'')+' · '+money(r.sueldoBase)+' / '+esc(r.tipoSueldo||''), badge: off?'<span class="badge bad">Inactivo</span>':esc(r.puesto||'')}; } },
+  nomina: { tab:'nomina', title:'Nómina', singular:'pago de nómina',
+    fields:[
+      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
+      {k:'periodoInicio',l:'Periodo inicio',t:'date',req:1},
+      {k:'periodoFin',l:'Periodo fin',t:'date',req:1},
+      {k:'horas',l:'Horas',t:'number'},
+      {k:'sueldoBruto',l:'Sueldo bruto $',t:'number'},
+      {k:'propinas',l:'Propinas $',t:'number'},
+      {k:'deducciones',l:'Deducciones $',t:'number'},
+      {k:'neto',l:'Neto $',t:'number'},
+      {k:'pagado',l:'Pagado',t:'select',opts:['Sí','No']},
+      {k:'fechaPago',l:'Fecha de pago',t:'date'}
+    ],
+    row:function(r){ var paid = String(r.pagado).toLowerCase()==='sí'||String(r.pagado).toLowerCase()==='si';
+      return {t:esc(r.personalId||'')+' · '+esc(r.periodoInicio||'')+' al '+esc(r.periodoFin||''), s:'Neto '+money(r.neto), amt:money(r.neto), badge: paid?'<span class="badge">Pagado</span>':'<span class="badge warn">Pendiente</span>'}; } },
+  inventario: { tab:'inventario', title:'Inventario', singular:'producto',
+    fields:[
+      {k:'producto',l:'Producto',t:'text',req:1},
+      {k:'categoria',l:'Categoría',t:'select',opts:CATS_INV,req:1},
+      {k:'unidad',l:'Unidad',t:'select',opts:['Pza','Kg','Lt','Caja','Bulto','Galón']},
+      {k:'existencia',l:'Existencia',t:'number'},
+      {k:'minimo',l:'Mínimo',t:'number'},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ var low = r.minimo!=='' && (parseFloat(r.existencia)||0) <= (parseFloat(r.minimo)||0);
+      return {t:esc(r.producto||''), s:esc(r.categoria||'')+' · '+esc(r.unidad||''), amt:String(r.existencia||'0'), badge: low?'<span class="badge bad">Bajo</span>':''}; } },
+  menu: { tab:'menu', title:'Menú', singular:'platillo',
+    fields:[
+      {k:'platillo',l:'Platillo',t:'text',req:1},
+      {k:'categoria',l:'Categoría',t:'select',opts:CATS_MENU,req:1},
+      {k:'precio',l:'Precio $',t:'number',req:1},
+      {k:'costoIngredientes',l:'Costo ingredientes $',t:'number'},
+      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ var p=parseFloat(r.precio)||0, c=parseFloat(r.costoIngredientes)||0;
+      var m = p>0 ? Math.round((p-c)/p*100) : 0;
+      return {t:esc(r.platillo||''), s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%', amt:money(p)}; } },
+  prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
+    fields:[
+      {k:'nombre',l:'Nombre',t:'text',req:1},
+      {k:'contacto',l:'Contacto',t:'text'},
+      {k:'telefono',l:'Teléfono',t:'text'},
+      {k:'email',l:'Email',t:'text'},
+      {k:'categoria',l:'Categoría',t:'select',opts:['Mariscos','Carnes','Abarrotes','Bebidas','Desechables','Servicios','Otros']},
+      {k:'notas',l:'Notas',t:'text'}
+    ],
+    row:function(r){ return {t:esc(r.nombre||''), s:esc(r.categoria||'')+(r.telefono?' · '+esc(r.telefono):''), badge:''}; } }
+};
+
+var CACHE = {};
+async function getRows(tab){
+  if (CACHE[tab]) return CACHE[tab];
+  var d = await api('list', { tab: tab });
+  if (!d.ok) throw new Error(d.error);
+  var rows = (d.rows||[]).filter(function(r){ return String(r.sucursal||SUC)===SUC || !r.sucursal; });
+  rows.sort(function(a,b){ return String(b._row)-String(a._row); });
+  CACHE[tab] = rows;
+  return rows;
+}
+
+async function renderList(key){
+  var def = TABDEF[key], el = document.getElementById('v-'+key);
+  el.innerHTML = '<h2 class="st">'+def.title+'</h2><div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
+  try {
+    var rows = await getRows(def.tab);
+    paintList(key, rows);
+  } catch(e){ document.getElementById('list-'+key).innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+function paintList(key, rows){
+  var def = TABDEF[key];
+  var box = document.getElementById('list-'+key);
+  if (!rows.length) { box.innerHTML = '<div class="empty">Sin registros. Toca + para agregar.</div>'; return; }
+  box.innerHTML = rows.map(function(r){
+    var c = def.row(r);
+    return '<div class="row-item" onclick="openForm(\''+key+'\',\''+esc(r.id)+'\')">' +
+      '<div><div class="t">'+c.t+'</div><div class="s">'+(c.s||'')+'</div></div>' +
+      '<div style="text-align:right">'+(c.badge||'')+'<div class="amt">'+(c.amt||'')+'</div></div></div>';
+  }).join('');
+}
+function filterList(key){
+  var q = document.getElementById('q-'+key).value.toLowerCase();
+  var rows = (CACHE[TABDEF[key].tab]||[]).filter(function(r){ return JSON.stringify(r).toLowerCase().indexOf(q)>=0; });
+  paintList(key, rows);
+}
+
+var RENDER = { dash: rDash };
+Object.keys(TABDEF).forEach(function(k){ RENDER[k] = function(){ renderList(k); }; });
+
+/* ================= FORM ================= */
+function fldHtml(f, val){
+  val = val==null?'':val;
+  var req = f.req ? 'required' : '';
+  if (f.t==='select') {
+    return '<label>'+f.l+'</label><select id="f_'+f.k+'" '+req+'><option value="">—</option>' +
+      f.opts.map(function(o){ return '<option value="'+esc(o)+'"'+(String(val)===String(o)?' selected':'')+'>'+esc(o)+'</option>'; }).join('') + '</select>';
+  }
+  if (f.t==='textarea' || f.k==='notas') return '<label>'+f.l+'</label><textarea id="f_'+f.k+'">'+esc(val)+'</textarea>';
+  var type = f.t==='number' ? 'number' : (f.t==='date' ? 'date' : 'text');
+  var step = f.t==='number' ? 'step="0.01"' : '';
+  return '<label>'+f.l+'</label><input id="f_'+f.k+'" type="'+type+'" '+step+' value="'+esc(val)+'" '+req+'>';
+}
+async function openForm(key, id){
+  key = key || CUR; if (key==='dash') return;
+  var def = TABDEF[key];
+  var rec = {};
+  if (id) {
+    var rows = await getRows(def.tab);
+    rec = rows.find(function(r){ return String(r.id)===String(id); }) || {};
+  } else {
+    if (def.fields.some(function(f){return f.k==='fecha';})) rec.fecha = todayStr();
+    if (def.fields.some(function(f){return f.k==='activo';})) rec.activo = 'Sí';
+    if (def.fields.some(function(f){return f.k==='pagado';})) rec.pagado = 'No';
+  }
+  var html = '<h3>'+(id?'Editar':'Nuevo')+' '+def.singular+'</h3><form class="sheet" onsubmit="return saveForm(event,\''+key+'\',\''+esc(id||'')+'\')">' +
+    def.fields.map(function(f){ return fldHtml(f, rec[f.k]); }).join('') +
+    '<button class="btn" type="submit">Guardar</button>' +
+    (id ? '<button class="btn danger" type="button" onclick="delRec(\''+key+'\',\''+esc(id)+'\')">Eliminar</button>' : '') +
+    '</form>';
+  openModal(html);
+}
+async function saveForm(ev, key, id){
+  ev.preventDefault();
+  var def = TABDEF[key];
+  var rec = { sucursal: SUC };
+  def.fields.forEach(function(f){
+    var el = document.getElementById('f_'+f.k);
+    rec[f.k] = el ? el.value.trim() : '';
+  });
+  if (key==='ventas' && !rec.total) rec.total = (parseFloat(rec.comedor)||0)+(parseFloat(rec.paraLlevar)||0)+(parseFloat(rec.delivery)||0);
+  try {
+    var d = id ? await api('update', { tab:def.tab, id:id, fields:rec }, true)
+               : await api('create', { tab:def.tab, record:rec }, true);
+    if (!d.ok) throw new Error(d.error);
+    delete CACHE[def.tab];
+    closeModal(); renderList(key);
+  } catch(e){ alert('Error: '+e.message); }
+  return false;
+}
+async function delRec(key, id){
+  if (!confirm('¿Eliminar este registro?')) return;
+  var def = TABDEF[key];
+  try {
+    var d = await api('delete', { tab:def.tab, id:id }, true);
+    if (!d.ok) throw new Error(d.error);
+    delete CACHE[def.tab];
+    closeModal(); renderList(key);
+  } catch(e){ alert('Error: '+e.message); }
+}
+</script>
+</body>
+</html>
