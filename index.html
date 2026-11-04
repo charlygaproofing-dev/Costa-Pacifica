@@ -443,6 +443,83 @@ function filterList(key){
 var RENDER = { dash: rDash };
 Object.keys(TABDEF).forEach(function(k){ RENDER[k] = function(){ renderList(k); }; });
 
+/* ============ REPORTE DE VENTAS: DIA / SEMANA / MES ============ */
+var VENTAS_VISTA = 'dia';
+function mondayOf(d){ var x=new Date(d); var day=(x.getDay()+6)%7; x.setHours(12,0,0,0); x.setDate(x.getDate()-day); return dStr(x); }
+function setVentasVista(v){ VENTAS_VISTA = v; renderVentas(); }
+var DNAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+var MNAMES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function ventasToggle(){
+  return '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+    [['dia','📅 Día'],['semana','📊 Semana'],['mes','🗓️ Mes']].map(function(v){
+      return '<button class="btn '+(VENTAS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setVentasVista(\''+v[0]+'\')">'+v[1]+'</button>';
+    }).join('') + '</div>';
+}
+function semanaHtml(rows){
+  var w = {};
+  rows.forEach(function(r){
+    var f = String(r.fecha||'').substring(0,10); if (f.length<10) return;
+    var m = mondayOf(new Date(f+'T12:00:00'));
+    (w[m]=w[m]||[]).push(r);
+  });
+  var keys = Object.keys(w).sort().reverse();
+  if (!keys.length) return '<div class="empty">Sin ventas registradas.</div>';
+  return keys.map(function(m){
+    var tot = w[m].reduce(function(a,r){ return a+vTotal(r); },0);
+    var days = w[m].sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).map(function(r){
+      var f = String(r.fecha).substring(0,10);
+      var dw = DNAMES[new Date(f+'T12:00:00').getDay()];
+      return '<div class="row-item"><div><div class="t">'+dw+' · '+f+'</div><div class="s">Comedor '+money(r.comedor)+' · Llevar '+money(r.paraLlevar)+' · Delivery '+money(r.delivery)+'</div></div><div class="amt">'+money(vTotal(r))+'</div></div>';
+    }).join('');
+    return '<h2 class="st" style="margin-top:14px">Semana del '+m+'</h2>' +
+      '<div class="card" style="margin-bottom:8px"><div class="lbl">Total semana</div><div class="val money">'+money(tot)+'</div></div>' +
+      '<div class="list">'+days+'</div>';
+  }).join('');
+}
+function mesHtml(rows){
+  var mo = {};
+  rows.forEach(function(r){
+    var f = String(r.fecha||'').substring(0,10); if (f.length<7) return;
+    var k = f.substring(0,7);
+    (mo[k]=mo[k]||[]).push(r);
+  });
+  var keys = Object.keys(mo).sort().reverse();
+  if (!keys.length) return '<div class="empty">Sin ventas registradas.</div>';
+  return keys.map(function(k){
+    var y = k.substring(0,4), m = parseInt(k.substring(5,7),10);
+    var tot = mo[k].reduce(function(a,r){ return a+vTotal(r); },0);
+    var wk = {};
+    mo[k].forEach(function(r){
+      var f = String(r.fecha).substring(0,10);
+      var mon = mondayOf(new Date(f+'T12:00:00'));
+      wk[mon] = (wk[mon]||0) + vTotal(r);
+    });
+    var wks = Object.keys(wk).sort().map(function(wm){
+      return '<div class="row-item"><div><div class="t">Semana del '+wm+'</div></div><div class="amt">'+money(wk[wm])+'</div></div>';
+    }).join('');
+    return '<h2 class="st" style="margin-top:14px">'+MNAMES[m]+' '+y+'</h2>' +
+      '<div class="card" style="margin-bottom:8px"><div class="lbl">Total mes</div><div class="val money">'+money(tot)+'</div></div>' +
+      '<div class="list">'+wks+'</div>';
+  }).join('');
+}
+async function renderVentas(){
+  var el = document.getElementById('v-ventas');
+  el.innerHTML = '<h2 class="st">Ventas</h2>'+ventasToggle()+'<div id="ventas-body"><div class="empty">Cargando…</div></div>';
+  try {
+    var rows = await getRows('ventas');
+    var body = document.getElementById('ventas-body');
+    if (VENTAS_VISTA==='dia'){
+      body.innerHTML = '<div class="toolbar"><input id="q-ventas" placeholder="Buscar…" oninput="filterList(\'ventas\')"></div><div class="list" id="list-ventas"></div>';
+      paintList('ventas', rows);
+    } else if (VENTAS_VISTA==='semana'){
+      body.innerHTML = semanaHtml(rows);
+    } else {
+      body.innerHTML = mesHtml(rows);
+    }
+  } catch(e){ document.getElementById('ventas-body').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+RENDER['ventas'] = renderVentas;
+
 /* ================= FORM ================= */
 function fldHtml(f, val){
   val = val==null?'':val;
