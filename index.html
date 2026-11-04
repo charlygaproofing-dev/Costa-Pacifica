@@ -104,6 +104,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <div class="view" id="v-inventario"></div>
   <div class="view" id="v-menu"></div>
   <div class="view" id="v-prov"></div>
+  <div class="view" id="v-act"></div>
 
   <button class="fab" id="fabBtn" onclick="openForm()">+</button>
 
@@ -116,6 +117,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
     <button data-v="inventario" onclick="go('inventario')"><span class="ic">📦</span>Invent.</button>
     <button data-v="menu" onclick="go('menu')"><span class="ic">🍽️</span>Menú</button>
     <button data-v="prov" onclick="go('prov')"><span class="ic">🚚</span>Prov.</button>
+    <button data-v="act" onclick="go('act')"><span class="ic">📅</span>Activ.</button>
   </nav>
 </div>
 
@@ -362,7 +364,19 @@ var TABDEF = {
       {k:'categoria',l:'Categoría',t:'select',opts:['Mariscos','Carnes','Abarrotes','Bebidas','Desechables','Servicios','Otros']},
       {k:'notas',l:'Notas',t:'text'}
     ],
-    row:function(r){ return {t:esc(r.nombre||''), s:esc(r.categoria||'')+(r.telefono?' · '+esc(r.telefono):''), badge:''}; } }
+    row:function(r){ return {t:esc(r.nombre||''), s:esc(r.categoria||'')+(r.telefono?' · '+esc(r.telefono):''), badge:''}; } },
+  act: { tab:'actividades', title:'Actividades', singular:'actividad',
+    fields:[
+      {k:'fecha',l:'Fecha',t:'date',req:1},
+      {k:'actividad',l:'Actividad',t:'text',req:1},
+      {k:'detalle',l:'Detalle',t:'text'},
+      {k:'meta',l:'Meta',t:'text'},
+      {k:'marketing',l:'Marketing',t:'text'},
+      {k:'notas',l:'Notas',t:'text'},
+      {k:'trimestre',l:'Trimestre',t:'select',opts:['Q1','Q2','Q3','Q4']},
+      {k:'anio',l:'Año',t:'text'}
+    ],
+    row:function(r){ return {t:esc(r.fecha||'')+' · '+esc(r.actividad||''), s:esc(r.detalle||'')+(r.meta?' · 🎯 '+esc(r.meta):''), badge:r.trimestre?'<span class="badge">'+esc(r.trimestre)+'</span>':''}; } }
 };
 
 var CACHE = {};
@@ -568,6 +582,35 @@ async function renderVentas(){
   } catch(e){ document.getElementById('ventas-body').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 RENDER['ventas'] = renderVentas;
+
+/* ============ CALENDARIO DE ACTIVIDADES ============ */
+function renderAct(){
+  var el = document.getElementById('v-act');
+  el.innerHTML = '<h2 class="st">Actividades 2026 · CP1604</h2><div class="empty">Cargando…</div>';
+  getRows('actividades').then(function(rows){
+    var mo = {};
+    rows.forEach(function(r){
+      var f = String(r.fecha||'').substring(0,10); if (f.length<7) return;
+      (mo[f.substring(0,7)]=mo[f.substring(0,7)]||[]).push(r);
+    });
+    var keys = Object.keys(mo).sort();
+    if (!keys.length){ el.innerHTML = '<h2 class="st">Actividades</h2><div class="empty">Sin actividades.</div>'; return; }
+    var html = '<h2 class="st">Actividades 2026 · CP1604</h2>';
+    keys.forEach(function(k){
+      var y = k.substring(0,4), m = parseInt(k.substring(5,7),10);
+      var items = mo[k].sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).map(function(r){
+        var f = String(r.fecha).substring(0,10);
+        var dw = DNAMES[new Date(f+'T12:00:00').getDay()];
+        var sub = esc(r.detalle||'') + (r.meta?' · 🎯 '+esc(r.meta):'') + (r.marketing?'<br>📣 '+esc(r.marketing):'') + (r.notas?'<br>📝 '+esc(r.notas):'');
+        return '<div class="row-item"><div><div class="t">'+dw+' '+f.substring(8,10)+' · '+esc(r.actividad||'')+'</div><div class="s">'+sub+'</div></div>'
+          +'<div><button class="btn sm sec" style="margin:0" onclick="openForm(\'act\',\''+esc(String(r.id||''))+'\')">✏️</button></div></div>';
+      }).join('');
+      html += '<h2 class="st" style="margin-top:14px">'+MNAMES[m]+' '+y+'</h2><div class="list">'+items+'</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function(e){ el.innerHTML = '<h2 class="st">Actividades</h2><div class="empty">Error: '+esc(e.message)+'</div>'; });
+}
+RENDER['act'] = renderAct;
 
 /* ================= FORM ================= */
 function fldHtml(f, val){
