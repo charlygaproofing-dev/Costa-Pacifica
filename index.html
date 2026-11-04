@@ -306,15 +306,19 @@ var TABDEF = {
       {k:'periodoInicio',l:'Periodo inicio',t:'date',req:1},
       {k:'periodoFin',l:'Periodo fin',t:'date',req:1},
       {k:'horas',l:'Horas',t:'number'},
+      {k:'ventasBrutas',l:'Ventas brutas $',t:'number'},
+      {k:'propinasDeclaradas',l:'Propinas declaradas $',t:'number'},
       {k:'sueldoBruto',l:'Sueldo bruto $',t:'number'},
-      {k:'propinas',l:'Propinas $',t:'number'},
+      {k:'propinas',l:'Propinas netas $ (auto: declaradas − 4%)',t:'number'},
       {k:'deducciones',l:'Deducciones $',t:'number'},
       {k:'neto',l:'Neto $',t:'number'},
       {k:'pagado',l:'Pagado',t:'select',opts:['Sí','No']},
       {k:'fechaPago',l:'Fecha de pago',t:'date'}
     ],
     row:function(r){ var paid = String(r.pagado).toLowerCase()==='sí'||String(r.pagado).toLowerCase()==='si';
-      return {t:esc(r.personalId||'')+' · '+esc(r.periodoInicio||'')+' al '+esc(r.periodoFin||''), s:'Neto '+money(r.neto), amt:money(r.neto), badge: paid?'<span class="badge">Pagado</span>':'<span class="badge warn">Pendiente</span>'}; } },
+      var vb = parseFloat(r.ventasBrutas)||0;
+      var tip = vb>0 ? ' · Tip-out 4%: '+money(vb*0.04) : '';
+      return {t:esc(r.personalId||'')+' · '+esc(r.periodoInicio||'')+' al '+esc(r.periodoFin||''), s:'Neto '+money(r.neto)+tip, amt:money(r.neto), badge: paid?'<span class="badge">Pagado</span>':'<span class="badge warn">Pendiente</span>'}; } },
   inventario: { tab:'inventario', title:'Inventario', singular:'producto',
     fields:[
       {k:'producto',l:'Producto',t:'text',req:1},
@@ -562,6 +566,10 @@ async function saveForm(ev, key, id){
     rec[f.k] = el ? el.value.trim() : '';
   });
   if (key==='ventas' && !rec.total) rec.total = (parseFloat(rec.comedor)||0)+(parseFloat(rec.paraLlevar)||0)+(parseFloat(rec.delivery)||0);
+  if (key==='nomina') {
+    var vb = parseFloat(rec.ventasBrutas)||0, pd = parseFloat(rec.propinasDeclaradas)||0;
+    if (vb>0 && pd>0) rec.propinas = Math.round((pd - vb*0.04)*100)/100;
+  }
   try {
     var d = id ? await api('update', { tab:def.tab, id:id, fields:rec }, true)
                : await api('create', { tab:def.tab, record:rec }, true);
