@@ -306,6 +306,48 @@ var TABDEF = {
     ],
     row:function(r){ var off = String(r.activo).toLowerCase()==='no';
       return {t:esc(r.nombre||''), s:esc(r.puesto||'')+' · '+money(r.sueldoBase)+' / '+esc(r.tipoSueldo||''), badge: off?'<span class="badge bad">Inactivo</span>':esc(r.puesto||'')}; } },
+  training: { tab:'training', title:'Programas de training', singular:'programa',
+    fields:[
+      {k:'puesto',l:'Puesto',t:'select',opts:PUESTOS,req:1},
+      {k:'titulo',l:'Título',t:'text',req:1},
+      {k:'duracion',l:'Duración',t:'text'},
+      {k:'descripcion',l:'Descripción',t:'text'},
+      {k:'documento',l:'Documento (URL)',t:'text'}
+    ],
+    row:function(r){ return {t:esc(r.titulo||''), s:esc(r.puesto||'')+' · '+esc(r.duracion||''), badge:''}; } },
+  training_progreso: { tab:'training_progreso', title:'Progreso de training', singular:'registro',
+    fields:[
+      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
+      {k:'trainingId',l:'Programa (ID)',t:'text',req:1},
+      {k:'fechaInicio',l:'Fecha de inicio',t:'date',req:1},
+      {k:'fechaFin',l:'Fecha de fin',t:'date'},
+      {k:'estado',l:'Estado',t:'select',opts:['En curso','Certificado','Certificado condicional','No certificado']},
+      {k:'entrenador',l:'Entrenador',t:'text'},
+      {k:'evaluacion',l:'Evaluación (1-5)',t:'number'},
+      {k:'comentarios',l:'Comentarios',t:'text'}
+    ],
+    row:function(r){ var st=String(r.estado||'');
+      var b = st==='Certificado'?'<span class="badge">Certificado</span>':st==='En curso'?'<span class="badge warn">En curso</span>':st?'<span class="badge bad">'+esc(st)+'</span>':'';
+      return {t:esc(r.personalId||'')+' · '+esc(r.trainingId||''), s:'Inicio '+esc(r.fechaInicio||'')+(r.evaluacion?' · Eval '+esc(r.evaluacion)+'/5':''), badge:b}; } },
+  evaluaciones: { tab:'evaluaciones', title:'Evaluaciones del staff', singular:'evaluación',
+    fields:[
+      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
+      {k:'fecha',l:'Fecha',t:'date',req:1},
+      {k:'tipo',l:'Tipo',t:'select',opts:['Desempeño','Entrenamiento']},
+      {k:'evaluador',l:'Evaluador',t:'text'},
+      {k:'actitud',l:'Actitud y energía (1-5)',t:'number'},
+      {k:'conocimiento',l:'Conocimiento (1-5)',t:'number'},
+      {k:'ejecucion',l:'Ejecución (1-5)',t:'number'},
+      {k:'equipo',l:'Trabajo en equipo (1-5)',t:'number'},
+      {k:'comunicacion',l:'Comunicación (1-5)',t:'number'},
+      {k:'promedio',l:'Promedio (auto)',t:'number'},
+      {k:'fortalezas',l:'Fortalezas',t:'text'},
+      {k:'areasMejora',l:'Áreas a mejorar',t:'text'},
+      {k:'comentarios',l:'Comentarios',t:'text'}
+    ],
+    row:function(r){ var p=parseFloat(r.promedio)||0;
+      var b = p>=4?'<span class="badge">★ '+p.toFixed(1)+'</span>':p>0?'<span class="badge warn">'+p.toFixed(1)+'</span>':'';
+      return {t:esc(r.personalId||'')+' · '+esc(r.fecha||''), s:esc(r.tipo||'')+' · '+esc(r.evaluador||''), badge:b}; } },
   nomina: { tab:'nomina', title:'Nómina', singular:'pago de nómina',
     fields:[
       {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
@@ -464,6 +506,37 @@ function filterList(key){
 
 var RENDER = { dash: rDash };
 Object.keys(TABDEF).forEach(function(k){ RENDER[k] = function(){ renderList(k); }; });
+
+/* ============ PERSONAL: PERSONAL / TRAINING / EVALUACIONES ============ */
+var PERS_VISTA = 'personal';
+function setPersVista(v){ PERS_VISTA = v; renderPersonal(); }
+function persToggle(){
+  return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
+    [['personal','👥 Personal'],['training','🎓 Training'],['evaluaciones','⭐ Evaluaciones']].map(function(v){
+      return '<button class="btn '+(PERS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setPersVista(\''+v[0]+'\')">'+v[1]+'</button>';
+    }).join('') + '</div>';
+}
+async function renderPersonal(){
+  var el = document.getElementById('v-personal');
+  if (PERS_VISTA==='personal'){
+    el.innerHTML = '<h2 class="st">Personal</h2>'+persToggle()+'<div class="toolbar"><input id="q-personal" placeholder="Buscar…" oninput="filterList(\'personal\')"></div><div class="list" id="list-personal"><div class="empty">Cargando…</div></div>';
+    try { paintList('personal', await getRows('personal')); }
+    catch(e){ document.getElementById('list-personal').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+    return;
+  }
+  var key = PERS_VISTA, def = TABDEF[key];
+  var addBtn = key==='training'
+    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'training_progreso\')">+ Registrar progreso</button>'
+    : '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'evaluaciones\')">+ Nueva evaluación</button>';
+  var sub = key==='training'
+    ? '<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn sm sec" style="margin:0" onclick="openForm(\'training\')">+ Programa</button></div>'
+    : '';
+  el.innerHTML = '<h2 class="st">Personal</h2>'+persToggle()+addBtn+sub
+    +'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
+  try { paintList(key, await getRows(def.tab)); }
+  catch(e){ document.getElementById('list-'+key).innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+RENDER['personal'] = renderPersonal;
 
 /* ============ REPORTE DE VENTAS: DIA / SEMANA / MES ============ */
 var VENTAS_VISTA = 'dia';
@@ -662,12 +735,17 @@ async function saveForm(ev, key, id){
     var vb = parseFloat(rec.ventasBrutas)||0, pd = parseFloat(rec.propinasDeclaradas)||0;
     if (vb>0 && pd>0) rec.propinas = Math.round((pd - vb*0.04)*100)/100;
   }
+  if (key==='evaluaciones') {
+    var sc = ['actitud','conocimiento','ejecucion','equipo','comunicacion'].map(function(k){ return parseFloat(rec[k])||0; }).filter(function(x){ return x>0; });
+    if (sc.length) rec.promedio = Math.round(sc.reduce(function(a,b){return a+b;},0)/sc.length*10)/10;
+  }
   try {
     var d = id ? await api('update', { tab:def.tab, id:id, fields:rec }, true)
                : await api('create', { tab:def.tab, record:rec }, true);
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
-    closeModal(); renderList(key);
+    closeModal();
+    if (['personal','training','training_progreso','evaluaciones'].indexOf(key)>=0) renderPersonal(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
   return false;
 }
@@ -678,7 +756,8 @@ async function delRec(key, id){
     var d = await api('delete', { tab:def.tab, id:id }, true);
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
-    closeModal(); renderList(key);
+    closeModal();
+    if (['personal','training','training_progreso','evaluaciones'].indexOf(key)>=0) renderPersonal(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
 }
 </script>
