@@ -334,13 +334,17 @@ var TABDEF = {
       {k:'categoria',l:'Categoría',t:'select',opts:CATS_MENU,req:1},
       {k:'precio',l:'Precio $',t:'number',req:1},
       {k:'costoIngredientes',l:'Costo ingredientes $',t:'number'},
+      {k:'receta',l:'Receta (ingredientes y preparación)',t:'textarea'},
+      {k:'imagen',l:'URL de imagen',t:'text'},
       {k:'activo',l:'Activo',t:'select',opts:['Sí','No']},
       {k:'notas',l:'Notas',t:'text'}
     ],
     row:function(r){ var p=parseFloat(r.precio)||0, c=parseFloat(r.costoIngredientes)||0;
       var m = p>0 ? Math.round((p-c)/p*100) : 0;
       var tb = r.tipo==='Barra' ? '🍹 ' : '';
-      return {t:tb+esc(r.platillo||''), s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%', amt:money(p)}; } },
+      var img = r.imagen ? '<img src="'+esc(r.imagen)+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;margin-right:8px">' : '';
+      var rec = r.receta ? ' · 📝 receta' : '';
+      return {t:'<div style="display:flex;align-items:center">'+img+'<span>'+tb+esc(r.platillo||'')+'</span></div>', s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%'+rec, amt:money(p)}; } },
   prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
     fields:[
       {k:'nombre',l:'Nombre',t:'text',req:1},
