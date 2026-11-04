@@ -320,12 +320,13 @@ var TABDEF = {
       {k:'producto',l:'Producto',t:'text',req:1},
       {k:'categoria',l:'Categoría',t:'select',opts:CATS_INV,req:1},
       {k:'unidad',l:'Unidad',t:'select',opts:['Pza','Kg','Lt','Caja','Bulto','Galón']},
-      {k:'existencia',l:'Existencia',t:'number'},
-      {k:'minimo',l:'Mínimo',t:'number'},
+      {k:'existencia',l:'Existencia actual',t:'number'},
+      {k:'minimo',l:'Par (mínimo)',t:'number'},
+      {k:'maximo',l:'Máximo (llenar hasta)',t:'number'},
       {k:'notas',l:'Notas',t:'text'}
     ],
     row:function(r){ var low = r.minimo!=='' && (parseFloat(r.existencia)||0) <= (parseFloat(r.minimo)||0);
-      return {t:esc(r.producto||''), s:esc(r.categoria||'')+' · '+esc(r.unidad||''), amt:String(r.existencia||'0'), badge: low?'<span class="badge bad">Bajo</span>':''}; } },
+      return {t:esc(r.producto||''), s:esc(r.categoria||'')+' · '+esc(r.unidad||'')+' · Par: '+esc(r.minimo||'—'), amt:String(r.existencia||'0'), badge: low?'<span class="badge bad">Pedir</span>':''}; } },
   menu: { tab:'menu', title:'Menú', singular:'platillo',
     fields:[
       {k:'platillo',l:'Platillo',t:'text',req:1},
@@ -363,11 +364,45 @@ async function getRows(tab){
 
 async function renderList(key){
   var def = TABDEF[key], el = document.getElementById('v-'+key);
-  el.innerHTML = '<h2 class="st">'+def.title+'</h2><div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
+  var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()">📋 Orden de compra sugerida</button>' : '';
+  el.innerHTML = '<h2 class="st">'+def.title+'</h2>'+extra+'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
   try {
     var rows = await getRows(def.tab);
     paintList(key, rows);
   } catch(e){ document.getElementById('list-'+key).innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+
+/* ============ ORDEN DE COMPRA (por pares) ============ */
+async function openOrder(){
+  var el = document.getElementById('v-inventario');
+  el.innerHTML = '<div class="empty">Calculando…</div>';
+  var rows = await getRows('inventario');
+  var need = [];
+  rows.forEach(function(r){
+    var ex = parseFloat(r.existencia)||0, par = parseFloat(r.minimo)||0, mx = parseFloat(r.maximo)||0;
+    if (r.minimo!=='' && ex <= par) {
+      var sug = Math.max(0, Math.round(((mx>0?mx:par) - ex)*100)/100);
+      need.push({ r: r, sug: sug });
+    }
+  });
+  if (!need.length) {
+    el.innerHTML = '<h2 class="st">📋 Orden de compra</h2><div class="empty">Todo está sobre el par. Nada que pedir. ✅</div><button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
+    return;
+  }
+  var groups = {};
+  need.forEach(function(n){ var c = n.r.categoria||'Sin categoría'; (groups[c]=groups[c]||[]).push(n); });
+  var html = '<h2 class="st">📋 Orden de compra · '+need.length+' productos</h2>';
+  Object.keys(groups).sort().forEach(function(c){
+    html += '<h2 class="st" style="margin-top:12px">'+esc(c)+'</h2><div class="list">';
+    groups[c].forEach(function(n){
+      var r = n.r;
+      html += '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Tienes '+esc(r.existencia||'0')+' '+esc(r.unidad||'')+' · Par '+esc(r.minimo)+'</div></div><div style="text-align:right"><span class="badge bad">Pedir '+n.sug+' '+esc(r.unidad||'')+'</span></div></div>';
+    });
+    html += '</div>';
+  });
+  html += '<p style="font-size:12px;color:var(--muted)">Sugerido = llenar hasta el máximo (o al par si no hay máximo). Cuando jales las ventas del Toast, el sugerido también va a considerar lo que se vende.</p>';
+  html += '<button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
+  el.innerHTML = html;
 }
 function paintList(key, rows){
   var def = TABDEF[key];
