@@ -330,6 +330,7 @@ var TABDEF = {
   menu: { tab:'menu', title:'Menú', singular:'platillo',
     fields:[
       {k:'platillo',l:'Platillo',t:'text',req:1},
+      {k:'tipo',l:'Tipo',t:'select',opts:['Comida','Barra'],req:1},
       {k:'categoria',l:'Categoría',t:'select',opts:CATS_MENU,req:1},
       {k:'precio',l:'Precio $',t:'number',req:1},
       {k:'costoIngredientes',l:'Costo ingredientes $',t:'number'},
@@ -338,7 +339,8 @@ var TABDEF = {
     ],
     row:function(r){ var p=parseFloat(r.precio)||0, c=parseFloat(r.costoIngredientes)||0;
       var m = p>0 ? Math.round((p-c)/p*100) : 0;
-      return {t:esc(r.platillo||''), s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%', amt:money(p)}; } },
+      var tb = r.tipo==='Barra' ? '🍹 ' : '';
+      return {t:tb+esc(r.platillo||''), s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%', amt:money(p)}; } },
   prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
     fields:[
       {k:'nombre',l:'Nombre',t:'text',req:1},
@@ -362,15 +364,28 @@ async function getRows(tab){
   return rows;
 }
 
+var MENU_FILT = 'Todo';
 async function renderList(key){
   var def = TABDEF[key], el = document.getElementById('v-'+key);
   var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()">📋 Orden de compra sugerida</button>' : '';
+  if (key==='menu') {
+    extra = '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+      ['Todo','Comida','Barra'].map(function(f){
+        return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding:9px" onclick="setMenuFilt(\''+f+'\')">'+(f==='Comida'?'🍽️ ':f==='Barra'?'🍹 ':'')+f+'</button>';
+      }).join('') + '</div>';
+  }
   el.innerHTML = '<h2 class="st">'+def.title+'</h2>'+extra+'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
   try {
     var rows = await getRows(def.tab);
     paintList(key, rows);
   } catch(e){ document.getElementById('list-'+key).innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
+function setMenuFilt(f){ MENU_FILT = f; renderList('menu'); }
+var _paintList = paintList;
+paintList = function(key, rows){
+  if (key==='menu' && MENU_FILT!=='Todo') rows = rows.filter(function(r){ return r.tipo===MENU_FILT; });
+  _paintList(key, rows);
+};
 
 /* ============ ORDEN DE COMPRA (por pares) ============ */
 async function openOrder(){
@@ -448,6 +463,7 @@ async function openForm(key, id){
     if (def.fields.some(function(f){return f.k==='fecha';})) rec.fecha = todayStr();
     if (def.fields.some(function(f){return f.k==='activo';})) rec.activo = 'Sí';
     if (def.fields.some(function(f){return f.k==='pagado';})) rec.pagado = 'No';
+    if (def.fields.some(function(f){return f.k==='tipo';})) rec.tipo = (MENU_FILT==='Comida'||MENU_FILT==='Barra') ? MENU_FILT : 'Comida';
   }
   var html = '<h3>'+(id?'Editar':'Nuevo')+' '+def.singular+'</h3><form class="sheet" onsubmit="return saveForm(event,\''+key+'\',\''+esc(id||'')+'\')">' +
     def.fields.map(function(f){ return fldHtml(f, rec[f.k]); }).join('') +
