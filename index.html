@@ -40,6 +40,15 @@ nav.bottom{position:fixed; bottom:0; left:0; right:0; background:#fff; border-to
 nav.bottom button{flex:1; border:none; background:none; padding:9px 2px 7px; font-size:10px; color:var(--muted);
   display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;}
 nav.bottom button .ic{font-size:19px;}
+
+svg.ic{width:1.15em;height:1.15em;vertical-align:-0.2em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+svg.ic.fill{fill:currentColor;}
+.nav-ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.dr-ic{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.drawer .di .ic{display:flex;align-items:center;}
+nav.bottom button .ic{display:flex;align-items:center;justify-content:center;}
+h2.st svg.ic{margin-right:6px;}
+.btn svg.ic{margin-right:6px;}
 nav.bottom button.on{color:var(--teal-d); font-weight:700;}
 .drawer-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40; display:none;}
 .drawer-bg.open{display:block;}
@@ -90,13 +99,41 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.7 4.73a2 2 0 0 0 2 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+<symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></symbol>
+<symbol id="i-checksq" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+<symbol id="i-wine" viewBox="0 0 24 24"><path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+<symbol id="i-mega" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+<symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+</defs>
+</svg>
+
 
 <div id="loginView">
   <div class="login-wrap">
-    <div class="logo">🌊</div>
-    <h1>Costa Pacífica</h1>
-    <p>CP1604 · App de operación</p>
-    <p style="margin:4px 0 14px;font-size:11px;color:var(--muted);letter-spacing:1.5px">ELABORADO POR <b>FAZ MANAGEMENT</b></p>
+    <h1 style="font-size:30px;letter-spacing:3px;margin:0 0 6px">FAZ MANAGEMENT</h1>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Costa Pacífica · CP1604 · App de operación</p>
     <input id="pinUser" type="text" placeholder="usuario" autocomplete="username" style="letter-spacing:1px;font-size:15px;text-align:left;">
     <input id="pinCode" type="password" placeholder="••••" inputmode="numeric" autocomplete="current-password">
     <div class="err" id="loginErr"></div>
@@ -106,7 +143,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
 
 <div id="appView" style="display:none">
   <header class="top">
-    <h1>🌊 Costa Pacífica</h1>
+    <h1>Costa Pacífica</h1>
     <div class="sub" id="hdrSub">CP1604</div>
   </header>
 
@@ -124,24 +161,24 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <button class="fab" id="fabBtn" onclick="openForm()">+</button>
 
   <nav class="bottom" id="bottomNav">
-    <button data-v="dash" class="on" onclick="go('dash')"><span class="ic">📊</span>Panel</button>
-    <button data-v="ventas" onclick="go('ventas')"><span class="ic">💵</span>Ventas</button>
-    <button data-v="checks" onclick="go('checks')"><span class="ic">✅</span>Checks</button>
-    <button data-v="personal" onclick="go('personal')"><span class="ic">👥</span>Personal</button>
-    <button data-v="__menu" onclick="toggleDrawer(true)"><span class="ic">☰</span>Menú</button>
+    <button data-v="dash" class="on" onclick="go('dash')"><span class="ic"><svg class="nav-ic"><use href="#i-chart"/></svg></span>Panel</button>
+    <button data-v="ventas" onclick="go('ventas')"><span class="ic"><svg class="nav-ic"><use href="#i-cash"/></svg></span>Ventas</button>
+    <button data-v="checks" onclick="go('checks')"><span class="ic"><svg class="nav-ic"><use href="#i-checksq"/></svg></span>Checks</button>
+    <button data-v="personal" onclick="go('personal')"><span class="ic"><svg class="nav-ic"><use href="#i-users"/></svg></span>Personal</button>
+    <button data-v="__menu" onclick="toggleDrawer(true)"><span class="ic" style="font-size:22px">☰</span>Menú</button>
   </nav>
 </div>
 
 <div class="drawer-bg" id="drawerBg" onclick="toggleDrawer(false)"></div>
 <aside class="drawer" id="drawer">
-  <div class="dh"><div style="font-size:16px;font-weight:700">🌊 Costa Pacífica</div><div style="font-size:11px;opacity:.85;margin-top:2px">CP1604 · App de operación</div></div>
+  <div class="dh"><div style="font-size:16px;font-weight:700">Costa Pacífica</div><div style="font-size:11px;opacity:.85;margin-top:2px">CP1604 · App de operación</div></div>
   <div id="drawerItems" style="overflow-y:auto;flex:1"></div>
   <div class="df">ELABORADO POR <b>FAZ MANAGEMENT</b></div>
 </aside>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal">
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()"><svg class="ic"><use href="#i-x"/></svg></button>
     <div id="modalBody"></div>
   </div>
 </div>
@@ -200,16 +237,16 @@ async function doLogin(){
 
 /* ================= MENU LATERAL ================= */
 var MODS = [
-  ['dash','📊','Panel','Resumen del día'],
-  ['ventas','💵','Ventas','Día, semana, mes y trimestre'],
-  ['gastos','🧾','Gastos','Registro de gastos'],
-  ['personal','👥','Personal','Staff, training y evaluaciones'],
-  ['nomina','💸','Nómina','Pagos y tip-out'],
-  ['inventario','📦','Inventario','Existencias y orden de compra'],
-  ['menu','🍽️','Menú','Platillos y recetario'],
-  ['prov','🚚','Proveedores','Catálogo de proveedores'],
-  ['act','📅','Actividades','Calendario 2026'],
-  ['checks','✅','Checks','Checklists FOH / BOH']
+  ['dash','<svg class="dr-ic"><use href="#i-chart"/></svg>','Panel','Resumen del día'],
+  ['ventas','<svg class="dr-ic"><use href="#i-cash"/></svg>','Ventas','Día, semana, mes y trimestre'],
+  ['gastos','<svg class="dr-ic"><use href="#i-receipt"/></svg>','Gastos','Registro de gastos'],
+  ['personal','<svg class="dr-ic"><use href="#i-users"/></svg>','Personal','Staff, training y evaluaciones'],
+  ['nomina','<svg class="dr-ic"><use href="#i-wallet"/></svg>','Nómina','Pagos y tip-out'],
+  ['inventario','<svg class="dr-ic"><use href="#i-box"/></svg>','Inventario','Existencias y orden de compra'],
+  ['menu','<svg class="dr-ic"><use href="#i-utensils"/></svg>','Menú','Platillos y recetario'],
+  ['prov','<svg class="dr-ic"><use href="#i-truck"/></svg>','Proveedores','Catálogo de proveedores'],
+  ['act','<svg class="dr-ic"><use href="#i-cal"/></svg>','Actividades','Calendario 2026'],
+  ['checks','<svg class="dr-ic"><use href="#i-checksq"/></svg>','Checks','Checklists FOH / BOH']
 ];
 function toggleDrawer(open){
   document.getElementById('drawer').classList.toggle('open', !!open);
@@ -315,8 +352,8 @@ async function rDash(){
         '<div class="card"><div class="lbl">Nómina pendiente</div><div class="val '+(nPend.length?'neg':'money')+'">'+money(nTot)+'</div><div style="font-size:12px;color:var(--muted)">'+nPend.length+' pago(s)</div></div>' +
         '<div class="card"><div class="lbl">Inventario bajo</div><div class="val '+(b.inventarioBajo.length?'neg':'money')+'">'+b.inventarioBajo.length+'</div><div style="font-size:12px;color:var(--muted)">productos</div></div>' +
       '</div>' +
-      '<h2 class="st">⏰ Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' +
-      '<h2 class="st">⚠️ Inventario bajo</h2><div class="list">'+inv+'</div>';
+      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' +
+      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Inventario bajo</h2><div class="list">'+inv+'</div>';
   } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 </script>
@@ -404,7 +441,7 @@ var TABDEF = {
       {k:'comentarios',l:'Comentarios',t:'text'}
     ],
     row:function(r){ var p=parseFloat(r.promedio)||0;
-      var b = p>=4?'<span class="badge">★ '+p.toFixed(1)+'</span>':p>0?'<span class="badge warn">'+p.toFixed(1)+'</span>':'';
+      var b = p>=4?'<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg> '+p.toFixed(1)+'</span>':p>0?'<span class="badge warn">'+p.toFixed(1)+'</span>':'';
       return {t:esc(r.personalId||'')+' · '+esc(r.fecha||''), s:esc(r.tipo||'')+' · '+esc(r.evaluador||''), badge:b}; } },
   puestos: { tab:'puestos', title:'Puestos y responsabilidades', singular:'puesto',
     fields:[
@@ -468,9 +505,9 @@ var TABDEF = {
     ],
     row:function(r){ var p=parseFloat(r.precio)||0, c=parseFloat(r.costoIngredientes)||0;
       var m = p>0 ? Math.round((p-c)/p*100) : 0;
-      var tb = r.tipo==='Barra' ? '🍹 ' : '';
+      var tb = r.tipo==='Barra' ? '<svg class="ic"><use href="#i-wine"/></svg> ' : '';
       var img = r.imagen ? '<img src="'+esc(r.imagen)+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;margin-right:8px">' : '';
-      var rec = r.receta ? ' · 📝 receta' : '';
+      var rec = r.receta ? ' · <svg class="ic"><use href="#i-note"/></svg> receta' : '';
       return {t:'<div style="display:flex;align-items:center">'+img+'<span>'+tb+esc(r.platillo||'')+'</span></div>', s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%'+rec, amt:money(p)}; } },
   prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
     fields:[
@@ -493,7 +530,7 @@ var TABDEF = {
       {k:'trimestre',l:'Trimestre',t:'select',opts:['Q1','Q2','Q3','Q4']},
       {k:'anio',l:'Año',t:'text'}
     ],
-    row:function(r){ return {t:esc(r.fecha||'')+' · '+esc(r.actividad||''), s:esc(r.detalle||'')+(r.meta?' · 🎯 '+esc(r.meta):''), badge:r.trimestre?'<span class="badge">'+esc(r.trimestre)+'</span>':''}; } }
+    row:function(r){ return {t:esc(r.fecha||'')+' · '+esc(r.actividad||''), s:esc(r.detalle||'')+(r.meta?' · <svg class="ic"><use href="#i-target"/></svg> '+esc(r.meta):''), badge:r.trimestre?'<span class="badge">'+esc(r.trimestre)+'</span>':''}; } }
 };
 
 var CACHE = {};
@@ -510,11 +547,11 @@ async function getRows(tab){
 var MENU_FILT = 'Todo';
 async function renderList(key){
   var def = TABDEF[key], el = document.getElementById('v-'+key);
-  var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()">📋 Orden de compra sugerida</button>' : '';
+  var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra sugerida</button>' : '';
   if (key==='menu') {
     extra = '<div style="display:flex;gap:8px;margin-bottom:10px">' +
       ['Todo','Comida','Barra'].map(function(f){
-        return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding:9px" onclick="setMenuFilt(\''+f+'\')">'+(f==='Comida'?'🍽️ ':f==='Barra'?'🍹 ':'')+f+'</button>';
+return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding:9px" onclick="setMenuFilt(\''+f+'\')">'+(f==='Comida'?'<svg class="ic"><use href="#i-utensils"/></svg> ':f==='Barra'?'<svg class="ic"><use href="#i-wine"/></svg> ':'')+f+'</button>';
       }).join('') + '</div>';
   }
   el.innerHTML = '<h2 class="st">'+def.title+'</h2>'+extra+'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
@@ -544,12 +581,12 @@ async function openOrder(){
     }
   });
   if (!need.length) {
-    el.innerHTML = '<h2 class="st">📋 Orden de compra</h2><div class="empty">Todo está sobre el par. Nada que pedir. ✅</div><button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
+    el.innerHTML = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra</h2><div class="empty">Todo está sobre el par. Nada que pedir. <svg class="ic"><use href="#i-checksq"/></svg></div><button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
     return;
   }
   var groups = {};
   need.forEach(function(n){ var c = n.r.categoria||'Sin categoría'; (groups[c]=groups[c]||[]).push(n); });
-  var html = '<h2 class="st">📋 Orden de compra · '+need.length+' productos</h2>';
+  var html = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra · '+need.length+' productos</h2>';
   Object.keys(groups).sort().forEach(function(c){
     html += '<h2 class="st" style="margin-top:12px">'+esc(c)+'</h2><div class="list">';
     groups[c].forEach(function(n){
@@ -587,7 +624,7 @@ var PERS_VISTA = 'personal';
 function setPersVista(v){ PERS_VISTA = v; renderPersonal(); }
 function persToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
-    [['personal','👥 Personal'],['training','🎓 Training'],['evaluaciones','⭐ Evaluaciones'],['puestos','📋 Puestos']].map(function(v){
+    [['personal','<svg class="ic"><use href="#i-users"/></svg> Personal'],['training','<svg class="ic"><use href="#i-award"/></svg> Training'],['evaluaciones','<svg class="ic"><use href="#i-star"/></svg> Evaluaciones'],['puestos','<svg class="ic"><use href="#i-clip"/></svg> Puestos']].map(function(v){
       return '<button class="btn '+(PERS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setPersVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
@@ -623,7 +660,7 @@ var DNAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 var MNAMES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function ventasToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
-    [['dia','📅 Día'],['semana','📊 Semana'],['mes','🗓️ Mes'],['trimestre','📈 Trimestre']].map(function(v){
+    [['dia','<svg class="ic"><use href="#i-cal"/></svg> Día'],['semana','<svg class="ic"><use href="#i-chart"/></svg> Semana'],['mes','<svg class="ic"><use href="#i-cal"/></svg> Mes'],['trimestre','<svg class="ic"><use href="#i-trend"/></svg> Trimestre']].map(function(v){
       return '<button class="btn '+(VENTAS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setVentasVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
@@ -751,9 +788,9 @@ function renderAct(){
       var items = mo[k].sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).map(function(r){
         var f = String(r.fecha).substring(0,10);
         var dw = DNAMES[new Date(f+'T12:00:00').getDay()];
-        var sub = esc(r.detalle||'') + (r.meta?' · 🎯 '+esc(r.meta):'') + (r.marketing?'<br>📣 '+esc(r.marketing):'') + (r.notas?'<br>📝 '+esc(r.notas):'');
+        var sub = esc(r.detalle||'') + (r.meta?' · <svg class="ic"><use href="#i-target"/></svg> '+esc(r.meta):'') + (r.marketing?'<br><svg class="ic"><use href="#i-mega"/></svg> '+esc(r.marketing):'') + (r.notas?'<br><svg class="ic"><use href="#i-note"/></svg> '+esc(r.notas):'');
         return '<div class="row-item"><div><div class="t">'+dw+' '+f.substring(8,10)+' · '+esc(r.actividad||'')+'</div><div class="s">'+sub+'</div></div>'
-          +'<div><button class="btn sm sec" style="margin:0" onclick="openForm(\'act\',\''+esc(String(r.id||''))+'\')">✏️</button></div></div>';
+          +'<div><button class="btn sm sec" style="margin:0" onclick="openForm(\'act\',\''+esc(String(r.id||''))+'\')"><svg class="ic"><use href="#i-pencil"/></svg></button></div></div>';
       }).join('');
       html += '<h2 class="st" style="margin-top:14px">'+MNAMES[m]+' '+y+'</h2><div class="list">'+items+'</div>';
     });
@@ -770,9 +807,9 @@ async function renderChecks(){
   var hoy = todayStr();
   el.innerHTML = '<h2 class="st">Checklists · '+hoy+'</h2>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-    +[['FOH','🍽️ FOH'],['BOH','🔥 BOH']].map(function(v){ return '<button class="btn '+(CHK_AREA===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
+    +[['FOH','<svg class="ic"><use href="#i-utensils"/></svg> FOH'],['BOH','<svg class="ic"><use href="#i-flame"/></svg> BOH']].map(function(v){ return '<button class="btn '+(CHK_AREA===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-    +[['Apertura','🌅 Apertura'],['Cierre','🌙 Cierre']].map(function(v){ return '<button class="btn '+(CHK_MOM===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(null,\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
+    +[['Apertura','<svg class="ic"><use href="#i-sunrise"/></svg> Apertura'],['Cierre','<svg class="ic"><use href="#i-moon"/></svg> Cierre']].map(function(v){ return '<button class="btn '+(CHK_MOM===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(null,\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
     +'<label>Responsable</label><input id="chkResp" style="width:100%;padding:10px;font-size:15px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px" value="'+esc(CHK_RESP)+'" oninput="CHK_RESP=this.value" placeholder="Nombre del responsable">'
     +'<div class="list" id="chkList"><div class="empty">Cargando…</div></div>'
     +'<div style="margin-top:10px"><button class="btn sec" style="margin:0" onclick="openForm(\'checklists\')">+ Editar tareas</button></div>';
@@ -789,7 +826,7 @@ async function renderChecks(){
       + tasks.map(function(t){
         var l = logs[t.id], on = l && String(l.hecho).toLowerCase()==='sí';
         return '<div class="row-item" onclick="chkToggle(\''+esc(t.id)+'\','+(on?'false':'true')+')">'
-          +'<div style="font-size:22px;min-width:30px">'+(on?'✅':'⬜')+'</div>'
+          +'<div style="font-size:22px;min-width:30px">'+(on?'<svg class="ic"><use href="#i-checksq"/></svg>':'<svg class="ic"><use href="#i-square"/></svg>')+'</div>'
           +'<div><div class="t" style="'+(on?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.tarea)+'</div>'
           +(l&&l.responsable?'<div class="s">'+esc(l.responsable)+'</div>':'')+'</div></div>';
       }).join('') || '<div class="empty">Sin tareas.</div>';
