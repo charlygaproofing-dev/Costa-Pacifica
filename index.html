@@ -49,6 +49,11 @@ svg.ic.fill{fill:currentColor;}
 nav.bottom button .ic{display:flex;align-items:center;justify-content:center;}
 h2.st svg.ic{margin-right:6px;}
 .btn svg.ic{margin-right:6px;}
+.rec-link{color:var(--teal-d); font-weight:600; cursor:pointer; white-space:nowrap;}
+.rec-link svg.ic{margin-right:2px;}
+.receta-view{background:#f7faf9; border:1px solid var(--line); border-radius:12px; padding:16px; font-size:14.5px; line-height:1.9;}
+.receta-view b{color:var(--teal-d);}
+.receta-view .rv-ver{font-weight:700; margin:8px 0 2px; color:var(--ink);}
 nav.bottom button.on{color:var(--teal-d); font-weight:700;}
 .drawer-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40; display:none;}
 .drawer-bg.open{display:block;}
@@ -275,6 +280,19 @@ function go(v){
 }
 function openModal(html){ document.getElementById('modalBody').innerHTML = html; document.getElementById('modalBg').classList.add('open'); }
 function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+
+/* ================= RECETA VIEW ================= */
+async function viewReceta(id){
+  var rows = await getRows('menu');
+  var r = rows.find(function(x){ return String(x.id)===String(id); }) || {};
+  var body = esc(r.receta||'')
+    .replace(/Versión (\d+):/g, '<div class="rv-ver">Versión $1</div>')
+    .replace(/(Garnish|Glass|Rim):/g, '<b>$1:</b>')
+    .replace(/\n/g, '<br>');
+  openModal('<h3><svg class="ic"><use href="#i-wine"/></svg> '+esc(r.platillo||'Receta')+'</h3>' +
+    '<div class="receta-view">'+body+'</div>' +
+    '<button class="btn sec" style="margin-top:12px" onclick="closeModal()">Cerrar</button>');
+}
 document.getElementById('modalBg').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
 
 /* ================= DASHBOARD ================= */
@@ -510,7 +528,7 @@ var TABDEF = {
       var m = p>0 ? Math.round((p-c)/p*100) : 0;
       var tb = r.tipo==='Barra' ? '<svg class="ic"><use href="#i-wine"/></svg> ' : '';
       var img = r.imagen ? '<img src="'+esc(r.imagen)+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;margin-right:8px">' : '';
-      var rec = r.receta ? ' · <svg class="ic"><use href="#i-note"/></svg> receta' : '';
+      var rec = r.receta ? ' · <span class="rec-link" onclick="event.stopPropagation();viewReceta(\''+esc(r.id||'')+'\')"><svg class="ic"><use href="#i-note"/></svg> ver receta</span>' : '';
       return {t:'<div style="display:flex;align-items:center">'+img+'<span>'+tb+esc(r.platillo||'')+'</span></div>', s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%'+rec, amt:money(p)}; } },
   prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
     fields:[
