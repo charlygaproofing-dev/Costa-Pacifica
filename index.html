@@ -79,6 +79,8 @@ h2.st{font-size:16px; margin:4px 0 10px;}
 .toolbar input{flex:1; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:14px;}
 .login-wrap{max-width:340px; margin:60px auto 0; padding:20px; text-align:center;}
 .login-wrap .logo{font-size:44px;}
+.login-logo{width:132px;height:132px;border-radius:50%;object-fit:cover;background:#fff;
+  box-shadow:0 6px 22px rgba(0,0,0,.14);display:block;margin:0 auto;}
 .login-wrap h1{color:var(--teal-d); margin:8px 0 2px;}
 .login-wrap p{color:var(--muted); font-size:13px;}
 .login-wrap input{width:100%; padding:13px; font-size:18px; text-align:center; letter-spacing:6px;
@@ -132,7 +134,8 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
 
 <div id="loginView">
   <div class="login-wrap">
-    <h1 style="font-size:30px;letter-spacing:3px;margin:0 0 6px">FAZ MANAGEMENT</h1>
+    <img src="logo-faz.png" alt="Faz Management" class="login-logo">
+    <h1 style="font-size:26px;letter-spacing:3px;margin:16px 0 6px">FAZ MANAGEMENT</h1>
     <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Costa Pacífica · CP1604 · App de operación</p>
     <input id="pinUser" type="text" placeholder="usuario" autocomplete="username" style="letter-spacing:1px;font-size:15px;text-align:left;">
     <input id="pinCode" type="password" placeholder="••••" inputmode="numeric" autocomplete="current-password">
