@@ -288,6 +288,20 @@ async function rDash(){
     var inv = (b.inventarioBajo||[]).map(function(r){
       return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Mínimo: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
     }).join('') || '<div class="empty">Todo en niveles normales</div>';
+    var mon = mondayOf(hoy);
+    var sun = dStr(new Date(new Date(mon+'T12:00:00').getTime()+6*864e5));
+    var hrs = {};
+    nom.forEach(function(r){
+      var f = String(r.periodoInicio||'').substring(0,10);
+      if (f>=mon && f<=sun){ var id=r.personalId||'?'; hrs[id]=(hrs[id]||0)+(parseFloat(r.horas)||0); }
+    });
+    var hAlert = Object.keys(hrs).filter(function(id){ return hrs[id]>=35; })
+      .sort(function(a,b){return hrs[b]-hrs[a];})
+      .map(function(id){
+        var h = Math.round(hrs[id]*10)/10;
+        var over = h>=40;
+        return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(over?'Pasó las 40h':'Cuidado con las horas')+' · cuidar el costo</div></div><span class="badge '+(over?'bad':'warn')+'">'+h+'h</span></div>';
+      }).join('') || '<div class="empty">Nadie cerca de las 40h esta semana</div>';
 
     el.innerHTML =
       '<h2 class="st">Hoy · ' + esc(b.fecha) + '</h2>' +
@@ -301,6 +315,7 @@ async function rDash(){
         '<div class="card"><div class="lbl">Nómina pendiente</div><div class="val '+(nPend.length?'neg':'money')+'">'+money(nTot)+'</div><div style="font-size:12px;color:var(--muted)">'+nPend.length+' pago(s)</div></div>' +
         '<div class="card"><div class="lbl">Inventario bajo</div><div class="val '+(b.inventarioBajo.length?'neg':'money')+'">'+b.inventarioBajo.length+'</div><div style="font-size:12px;color:var(--muted)">productos</div></div>' +
       '</div>' +
+      '<h2 class="st">⏰ Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' +
       '<h2 class="st">⚠️ Inventario bajo</h2><div class="list">'+inv+'</div>';
   } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
