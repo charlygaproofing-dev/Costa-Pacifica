@@ -105,6 +105,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <div class="view" id="v-menu"></div>
   <div class="view" id="v-prov"></div>
   <div class="view" id="v-act"></div>
+  <div class="view" id="v-checks"></div>
 
   <button class="fab" id="fabBtn" onclick="openForm()">+</button>
 
@@ -118,6 +119,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
     <button data-v="menu" onclick="go('menu')"><span class="ic">🍽️</span>Menú</button>
     <button data-v="prov" onclick="go('prov')"><span class="ic">🚚</span>Prov.</button>
     <button data-v="act" onclick="go('act')"><span class="ic">📅</span>Activ.</button>
+    <button data-v="checks" onclick="go('checks')"><span class="ic">✅</span>Checks</button>
   </nav>
 </div>
 
@@ -356,6 +358,15 @@ var TABDEF = {
       {k:'responsabilidades',l:'Responsabilidades',t:'text'}
     ],
     row:function(r){ return {t:esc(r.puesto||''), s:(r.reportaA?'Reporta a: '+esc(r.reportaA)+' · ':'')+esc(r.responsabilidades||''), badge:r.area?'<span class="badge">'+esc(r.area)+'</span>':''}; } },
+  checklists: { tab:'checklists', title:'Tareas de checklist', singular:'tarea',
+    fields:[
+      {k:'area',l:'Área',t:'select',opts:['FOH','BOH'],req:1},
+      {k:'momento',l:'Momento',t:'select',opts:['Apertura','Cierre'],req:1},
+      {k:'tarea',l:'Tarea',t:'text',req:1},
+      {k:'orden',l:'Orden',t:'number'},
+      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']}
+    ],
+    row:function(r){ return {t:esc(r.tarea||''), s:esc(r.area||'')+' · '+esc(r.momento||'')+' · #'+esc(r.orden||''), badge:''}; } },
   nomina: { tab:'nomina', title:'Nómina', singular:'pago de nómina',
     fields:[
       {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
@@ -695,6 +706,51 @@ function renderAct(){
 }
 RENDER['act'] = renderAct;
 
+/* ============ CHECKLISTS FOH / BOH ============ */
+var CHK_AREA = 'FOH', CHK_MOM = 'Apertura', CHK_RESP = '';
+function setChk(a,m){ if(a) CHK_AREA=a; if(m) CHK_MOM=m; renderChecks(); }
+async function renderChecks(){
+  var el = document.getElementById('v-checks');
+  var hoy = todayStr();
+  el.innerHTML = '<h2 class="st">Checklists · '+hoy+'</h2>'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+    +[['FOH','🍽️ FOH'],['BOH','🔥 BOH']].map(function(v){ return '<button class="btn '+(CHK_AREA===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+    +[['Apertura','🌅 Apertura'],['Cierre','🌙 Cierre']].map(function(v){ return '<button class="btn '+(CHK_MOM===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(null,\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
+    +'<label>Responsable</label><input id="chkResp" style="width:100%;padding:10px;font-size:15px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px" value="'+esc(CHK_RESP)+'" oninput="CHK_RESP=this.value" placeholder="Nombre del responsable">'
+    +'<div class="list" id="chkList"><div class="empty">Cargando…</div></div>'
+    +'<div style="margin-top:10px"><button class="btn sec" style="margin:0" onclick="openForm(\'checklists\')">+ Editar tareas</button></div>';
+  try {
+    var mc = await api('list',{tab:'checklists'});
+    var lg = await api('list',{tab:'checklist_log'});
+    var tasks = (mc.rows||[]).filter(function(r){ return r.area===CHK_AREA && r.momento===CHK_MOM && String(r.activo).toLowerCase()!=='no'; })
+      .sort(function(a,b){ return (parseFloat(a.orden)||0)-(parseFloat(b.orden)||0); });
+    var logs = {};
+    (lg.rows||[]).forEach(function(r){ if(String(r.fecha).substring(0,10)===hoy) logs[r.checklistId]=r; });
+    var done = tasks.filter(function(t){ var l=logs[t.id]; return l && String(l.hecho).toLowerCase()==='sí'; }).length;
+    document.getElementById('chkList').innerHTML =
+      (tasks.length?'<div class="card" style="margin-bottom:8px"><div class="lbl">Avance</div><div class="val">'+done+' / '+tasks.length+'</div></div>':'')
+      + tasks.map(function(t){
+        var l = logs[t.id], on = l && String(l.hecho).toLowerCase()==='sí';
+        return '<div class="row-item" onclick="chkToggle(\''+esc(t.id)+'\','+(on?'false':'true')+')">'
+          +'<div style="font-size:22px;min-width:30px">'+(on?'✅':'⬜')+'</div>'
+          +'<div><div class="t" style="'+(on?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.tarea)+'</div>'
+          +(l&&l.responsable?'<div class="s">'+esc(l.responsable)+'</div>':'')+'</div></div>';
+      }).join('') || '<div class="empty">Sin tareas.</div>';
+  } catch(e){ document.getElementById('chkList').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+async function chkToggle(chkId, val){
+  var hoy = todayStr();
+  try {
+    var lg = await api('list',{tab:'checklist_log'});
+    var ex = (lg.rows||[]).find(function(r){ return String(r.fecha).substring(0,10)===hoy && String(r.checklistId)===String(chkId); });
+    if (ex) await api('update',{tab:'checklist_log', id:ex.id, fields:{hecho: val?'Sí':'No', responsable: CHK_RESP}}, true);
+    else await api('create',{tab:'checklist_log', record:{fecha:hoy, area:CHK_AREA, momento:CHK_MOM, checklistId:chkId, hecho: val?'Sí':'No', responsable: CHK_RESP}}, true);
+    renderChecks();
+  } catch(e){ alert('Error: '+e.message); }
+}
+RENDER['checks'] = renderChecks;
+
 /* ================= FORM ================= */
 function fldHtml(f, val){
   val = val==null?'':val;
@@ -755,7 +811,7 @@ async function saveForm(ev, key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
   return false;
 }
@@ -767,7 +823,7 @@ async function delRec(key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
 }
 </script>
