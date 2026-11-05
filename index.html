@@ -348,6 +348,14 @@ var TABDEF = {
     row:function(r){ var p=parseFloat(r.promedio)||0;
       var b = p>=4?'<span class="badge">★ '+p.toFixed(1)+'</span>':p>0?'<span class="badge warn">'+p.toFixed(1)+'</span>':'';
       return {t:esc(r.personalId||'')+' · '+esc(r.fecha||''), s:esc(r.tipo||'')+' · '+esc(r.evaluador||''), badge:b}; } },
+  puestos: { tab:'puestos', title:'Puestos y responsabilidades', singular:'puesto',
+    fields:[
+      {k:'puesto',l:'Puesto',t:'text',req:1},
+      {k:'area',l:'Área',t:'select',opts:['Dirección','Liderazgo','FOH','Bar','Cocina','Soporte']},
+      {k:'reportaA',l:'Reporta a',t:'text'},
+      {k:'responsabilidades',l:'Responsabilidades',t:'text'}
+    ],
+    row:function(r){ return {t:esc(r.puesto||''), s:(r.reportaA?'Reporta a: '+esc(r.reportaA)+' · ':'')+esc(r.responsabilidades||''), badge:r.area?'<span class="badge">'+esc(r.area)+'</span>':''}; } },
   nomina: { tab:'nomina', title:'Nómina', singular:'pago de nómina',
     fields:[
       {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
@@ -512,7 +520,7 @@ var PERS_VISTA = 'personal';
 function setPersVista(v){ PERS_VISTA = v; renderPersonal(); }
 function persToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
-    [['personal','👥 Personal'],['training','🎓 Training'],['evaluaciones','⭐ Evaluaciones']].map(function(v){
+    [['personal','👥 Personal'],['training','🎓 Training'],['evaluaciones','⭐ Evaluaciones'],['puestos','📋 Puestos']].map(function(v){
       return '<button class="btn '+(PERS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setPersVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
@@ -527,6 +535,8 @@ async function renderPersonal(){
   var key = PERS_VISTA, def = TABDEF[key];
   var addBtn = key==='training'
     ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'training_progreso\')">+ Registrar progreso</button>'
+    : key==='puestos'
+    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'puestos\')">+ Nuevo puesto</button>'
     : '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'evaluaciones\')">+ Nueva evaluación</button>';
   var sub = key==='training'
     ? '<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn sm sec" style="margin:0" onclick="openForm(\'training\')">+ Programa</button></div>'
@@ -745,7 +755,7 @@ async function saveForm(ev, key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones'].indexOf(key)>=0) renderPersonal(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
   return false;
 }
@@ -757,7 +767,7 @@ async function delRec(key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones'].indexOf(key)>=0) renderPersonal(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
 }
 </script>
