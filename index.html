@@ -41,6 +41,19 @@ nav.bottom button{flex:1; border:none; background:none; padding:9px 2px 7px; fon
   display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;}
 nav.bottom button .ic{font-size:19px;}
 nav.bottom button.on{color:var(--teal-d); font-weight:700;}
+.drawer-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40; display:none;}
+.drawer-bg.open{display:block;}
+.drawer{position:fixed; top:0; left:0; bottom:0; width:272px; background:#fff; z-index:41;
+  transform:translateX(-105%); transition:transform .25s ease; display:flex; flex-direction:column;
+  box-shadow:2px 0 12px rgba(0,0,0,.18);}
+.drawer.open{transform:none;}
+.drawer .dh{background:linear-gradient(135deg,var(--teal-d),var(--teal)); color:#fff; padding:20px 16px;}
+.drawer .di{display:flex; gap:12px; align-items:center; padding:11px 16px; border-bottom:1px solid #f2f2f2; cursor:pointer;}
+.drawer .di .ic{font-size:22px; min-width:28px; text-align:center;}
+.drawer .di .t{font-weight:600; font-size:14px; color:var(--ink);}
+.drawer .di .s{font-size:11px; color:var(--muted);}
+.drawer .di.on{background:#eef6f6;}
+.drawer .df{margin-top:auto; padding:14px 16px; font-size:10px; color:var(--muted); letter-spacing:1px; border-top:1px solid #f2f2f2;}
 .fab{position:fixed; right:16px; bottom:78px; width:56px; height:56px; border-radius:50%;
   background:var(--teal); color:#fff; font-size:28px; border:none; box-shadow:0 3px 10px rgba(0,0,0,.25); cursor:pointer; z-index:9;}
 form.sheet{background:#fff; border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.1);}
@@ -113,16 +126,18 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <nav class="bottom" id="bottomNav">
     <button data-v="dash" class="on" onclick="go('dash')"><span class="ic">📊</span>Panel</button>
     <button data-v="ventas" onclick="go('ventas')"><span class="ic">💵</span>Ventas</button>
-    <button data-v="gastos" onclick="go('gastos')"><span class="ic">🧾</span>Gastos</button>
-    <button data-v="personal" onclick="go('personal')"><span class="ic">👥</span>Personal</button>
-    <button data-v="nomina" onclick="go('nomina')"><span class="ic">💸</span>Nómina</button>
-    <button data-v="inventario" onclick="go('inventario')"><span class="ic">📦</span>Invent.</button>
-    <button data-v="menu" onclick="go('menu')"><span class="ic">🍽️</span>Menú</button>
-    <button data-v="prov" onclick="go('prov')"><span class="ic">🚚</span>Prov.</button>
-    <button data-v="act" onclick="go('act')"><span class="ic">📅</span>Activ.</button>
     <button data-v="checks" onclick="go('checks')"><span class="ic">✅</span>Checks</button>
+    <button data-v="personal" onclick="go('personal')"><span class="ic">👥</span>Personal</button>
+    <button data-v="__menu" onclick="toggleDrawer(true)"><span class="ic">☰</span>Menú</button>
   </nav>
 </div>
+
+<div class="drawer-bg" id="drawerBg" onclick="toggleDrawer(false)"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh"><div style="font-size:16px;font-weight:700">🌊 Costa Pacífica</div><div style="font-size:11px;opacity:.85;margin-top:2px">CP1604 · App de operación</div></div>
+  <div id="drawerItems" style="overflow-y:auto;flex:1"></div>
+  <div class="df">ELABORADO POR <b>FAZ MANAGEMENT</b></div>
+</aside>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal">
@@ -181,6 +196,31 @@ async function doLogin(){
     document.getElementById('hdrSub').textContent = 'CP1604 · ' + (ME.nombre||ME.username);
     go('dash');
   } catch(e){ err.textContent = 'Error: ' + e.message; }
+}
+
+/* ================= MENU LATERAL ================= */
+var MODS = [
+  ['dash','📊','Panel','Resumen del día'],
+  ['ventas','💵','Ventas','Día, semana, mes y trimestre'],
+  ['gastos','🧾','Gastos','Registro de gastos'],
+  ['personal','👥','Personal','Staff, training y evaluaciones'],
+  ['nomina','💸','Nómina','Pagos y tip-out'],
+  ['inventario','📦','Inventario','Existencias y orden de compra'],
+  ['menu','🍽️','Menú','Platillos y recetario'],
+  ['prov','🚚','Proveedores','Catálogo de proveedores'],
+  ['act','📅','Actividades','Calendario 2026'],
+  ['checks','✅','Checks','Checklists FOH / BOH']
+];
+function toggleDrawer(open){
+  document.getElementById('drawer').classList.toggle('open', !!open);
+  document.getElementById('drawerBg').classList.toggle('open', !!open);
+  if (open) paintDrawer();
+}
+function paintDrawer(){
+  document.getElementById('drawerItems').innerHTML = MODS.map(function(m){
+    return '<div class="di'+(CUR===m[0]?' on':'')+'" onclick="toggleDrawer(false);go(\''+m[0]+'\')">'
+      +'<div class="ic">'+m[1]+'</div><div><div class="t">'+m[2]+'</div><div class="s">'+m[3]+'</div></div></div>';
+  }).join('');
 }
 
 /* ================= NAV ================= */
