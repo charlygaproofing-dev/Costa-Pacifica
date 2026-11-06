@@ -394,10 +394,22 @@ var TABDEF = {
       {k:'comedor',l:'Comedor $',t:'number'},
       {k:'paraLlevar',l:'Para llevar $',t:'number'},
       {k:'delivery',l:'Delivery $',t:'number'},
+      {k:'invitados',l:'Invitados',t:'number'},
+      {k:'desayuno',l:'Desayuno $',t:'number'},
+      {k:'comida',l:'Comida $',t:'number'},
+      {k:'cena',l:'Cena $',t:'number'},
+      {k:'noche',l:'Noche (late night) $',t:'number'},
+      {k:'propinas',l:'Propinas $',t:'number'},
+      {k:'impuestos',l:'Impuestos $',t:'number'},
+      {k:'gratificacion',l:'Gratificación $',t:'number'},
+      {k:'descuentos',l:'Descuentos y cortesías $',t:'number'},
+      {k:'voids',l:'Voids $',t:'number'},
+      {k:'efectivo',l:'Efectivo $',t:'number'},
+      {k:'tarjeta',l:'Tarjeta $',t:'number'},
       {k:'notas',l:'Notas',t:'text'}
     ],
-    row:function(r){ var t=(parseFloat(r.total)||0)||((parseFloat(r.comedor)||0)+(parseFloat(r.paraLlevar)||0)+(parseFloat(r.delivery)||0))||((parseFloat(r.ventaComida)||0)+(parseFloat(r.ventaLicor)||0));
-      return {t:'Venta · '+esc(r.fecha||''), s:'Comida '+money(r.ventaComida)+' · Licor '+money(r.ventaLicor), amt:money(t)}; } },
+    row:function(r){ var t=vTotal(r); var inv=parseFloat(r.invitados)||0;
+      return {t:'Venta · '+esc(r.fecha||''), s:'Comida '+money(r.ventaComida)+' · Licor '+money(r.ventaLicor)+(inv>0?' · '+inv+' invitados · PPA '+money(t/inv):''), amt:money(t)}; } },
   gastos: { tab:'gastos', title:'Gastos', singular:'gasto',
     fields:[
       {k:'fecha',l:'Fecha',t:'date',req:1},
@@ -673,64 +685,189 @@ async function renderPersonal(){
 }
 RENDER['personal'] = renderPersonal;
 
-/* ============ REPORTE DE VENTAS: DIA / SEMANA / MES ============ */
+/* ============ REPORTE DE VENTAS ESTILO FORMATO OP-ADMIN: DIA / SEMANA / MES / TRIMESTRE ============ */
 var VENTAS_VISTA = 'dia';
+var DIA_SEL = todayStr();
+var SEMANA_SEL = '';
+var MES_SEL = todayStr().substring(0,7);
+var DIA_INIT = false;
 function mondayOf(d){ var x=new Date(d); var day=(x.getDay()+6)%7; x.setHours(12,0,0,0); x.setDate(x.getDate()-day); return dStr(x); }
 function setVentasVista(v){ VENTAS_VISTA = v; renderVentas(); }
 var DNAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 var MNAMES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+/* Metas del formato OP-ADMIN COSTA 1604: semana $54,000 (lun 4,000, mar 4,000, mié 5,000, jue 8,000, vie 13,000, sáb 13,500, dom 6,500) */
+var META_DIA = [6500,4000,4000,5000,8000,13000,13500];
+function metaDia(f){ var d=new Date(f+'T12:00:00'); return isNaN(d)?0:(META_DIA[d.getDay()]||0); }
+function metaRango(a,b){ var t=0, d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<=e){ t+=metaDia(dStr(d)); d.setDate(d.getDate()+1); } return t; }
+function hasVal(r,k){ var v=r[k]; return v!==''&&v!==null&&v!==undefined; }
+function sumK(rows,k){ var t=0,n=0; rows.forEach(function(r){ if(hasVal(r,k)){ t+=parseFloat(r[k])||0; n++; } }); return {t:t,n:n}; }
+function gcat(g,c){ var t=0,n=0; g.forEach(function(r){ if((r.categoria||'')===c){ t+=parseFloat(r.monto)||0; n++; } }); return {t:t,n:n}; }
+function aggRango(v,g,a,b){
+  var vv=v.filter(function(r){ var f=String(r.fecha||'').substring(0,10); return f>=a&&f<=b; });
+  var gg=g.filter(function(r){ var f=String(r.fecha||'').substring(0,10); return f>=a&&f<=b; });
+  var ag={n:vv.length};
+  var net=0; vv.forEach(function(r){ net+=vTotal(r); }); ag.net={t:net,n:vv.length};
+  ag.vC=sumK(vv,'ventaComida'); ag.vL=sumK(vv,'ventaLicor');
+  ag.inv=sumK(vv,'invitados');
+  ag.prop=sumK(vv,'propinas'); ag.imp=sumK(vv,'impuestos'); ag.grat=sumK(vv,'gratificacion');
+  ag.desc=sumK(vv,'descuentos'); ag.voids=sumK(vv,'voids');
+  ag.efec=sumK(vv,'efectivo'); ag.tarj=sumK(vv,'tarjeta');
+  ag.des=sumK(vv,'desayuno'); ag.com=sumK(vv,'comida'); ag.cen=sumK(vv,'cena'); ag.noc=sumK(vv,'noche');
+  ag.gMC=gcat(gg,'Mercancía Comida'); ag.gML=gcat(gg,'Mercancía Licor');
+  var foh=gcat(gg,'Desechables'), limp=gcat(gg,'Limpieza');
+  ag.gFOH={t:foh.t+limp.t,n:foh.n+limp.n};
+  ag.gRenta=gcat(gg,'Renta');
+  var ot={t:0,n:0}; ['Servicios','Equipo','Marketing','Música y Entretenimiento','Reparaciones','Otros'].forEach(function(c){ var s=gcat(gg,c); ot.t+=s.t; ot.n+=s.n; });
+  ag.gOtros=ot;
+  var gt={t:0,n:0}; gg.forEach(function(r){ if((r.categoria||'')!=='Nómina'){ gt.t+=parseFloat(r.monto)||0; gt.n++; } });
+  ag.gTot=gt;
+  ag.notas=vv.map(function(r){ return r.notas; }).filter(function(x){ return x; }).join(' · ');
+  return ag;
+}
+function laborRango(n,a,b){ var t=0,c=0; n.forEach(function(r){ var f=String(r.periodoFin||'').substring(0,10); if(f>=a&&f<=b){ t+=parseFloat(r.neto)||0; c++; } }); return c>0?t:null; }
+function deriv(ag,labor){
+  var d={};
+  d.totalAmt=(ag.net.n||ag.grat.n||ag.imp.n||ag.prop.n)?ag.net.t+ag.grat.t+ag.imp.t+ag.prop.t:null;
+  d.cobrado=(ag.efec.n||ag.tarj.n)?ag.efec.t+ag.tarj.t:null;
+  d.ppa=ag.inv.t>0?ag.net.t/ag.inv.t:null;
+  d.mealTot=(ag.des.n||ag.com.n||ag.cen.n||ag.noc.n)?ag.des.t+ag.com.t+ag.cen.t+ag.noc.t:null;
+  d.cogs=(ag.gMC.n||ag.gML.n)?ag.gMC.t+ag.gML.t:null;
+  d.foodPct=(ag.gMC.n&&ag.vC.t>0)?ag.gMC.t/ag.vC.t*100:null;
+  d.liqPct=(ag.gML.n&&ag.vL.t>0)?ag.gML.t/ag.vL.t*100:null;
+  d.labPct=(labor!==null&&ag.net.t>0)?labor/ag.net.t*100:null;
+  d.prime=(d.cogs!==null&&labor!==null&&ag.net.t>0)?(d.cogs+labor)/ag.net.t*100:null;
+  d.util=(ag.net.n||ag.gTot.n)?ag.net.t-ag.gTot.t-(labor||0):null;
+  return d;
+}
+function mcell(v,b){ var s=b?';font-weight:700':''; return (v===null||v===undefined)?'<td style="text-align:right;padding:6px;color:#bbb">—</td>':'<td style="text-align:right;padding:6px'+s+'">'+money(v)+'</td>'; }
+function pcell(v,b){ var s=b?';font-weight:700':''; return (v===null||v===undefined)?'<td style="text-align:right;padding:6px;color:#bbb">—</td>':'<td style="text-align:right;padding:6px'+s+'">'+pct(v)+'</td>'; }
+function ncell(v,b){ var s=b?';font-weight:700':''; return (v===null||v===undefined)?'<td style="text-align:right;padding:6px;color:#bbb">—</td>':'<td style="text-align:right;padding:6px'+s+'">'+v+'</td>'; }
+/* Filas del formato OP-ADMIN, en su mismo orden. f(ag, dv, labor, meta). Tipo: m=$ total, s=$, p=%, n=número */
+function formatoRows(){
+  return [
+    {sec:'INCOME'},
+    {l:'META (GOAL)', f:function(a,dv,lb,meta){ return meta; }, m:1},
+    {l:'VENTAS NETAS', f:function(a){ return a.net.n?a.net.t:null; }, m:1},
+    {l:'DIFERENCIA VS META', f:function(a,dv,lb,meta){ return a.net.n?a.net.t-meta:null; }, m:1},
+    {l:'GRATIFICACIÓN', f:function(a){ return a.grat.n?a.grat.t:null; }, s:1},
+    {l:'IMPUESTOS', f:function(a){ return a.imp.n?a.imp.t:null; }, s:1},
+    {l:'PROPINAS', f:function(a){ return a.prop.n?a.prop.t:null; }, s:1},
+    {l:'TOTAL', f:function(a,dv){ return dv.totalAmt; }, m:1},
+    {l:'TARJETA', f:function(a){ return a.tarj.n?a.tarj.t:null; }, s:1},
+    {l:'EFECTIVO', f:function(a){ return a.efec.n?a.efec.t:null; }, s:1},
+    {l:'TOTAL COBRADO', f:function(a,dv){ return dv.cobrado; }, m:1},
+    {l:'# OF GUEST', f:function(a){ return a.inv.n?a.inv.t:null; }, n:1},
+    {l:'PPA', f:function(a,dv){ return dv.ppa; }, m:1},
+    {sec:'DESAYUNO / COMIDA / CENA'},
+    {l:'DESAYUNO', f:function(a){ return a.des.n?a.des.t:null; }, s:1},
+    {l:'COMIDA', f:function(a){ return a.com.n?a.com.t:null; }, s:1},
+    {l:'CENA', f:function(a){ return a.cen.n?a.cen.t:null; }, s:1},
+    {l:'LATE NIGHT', f:function(a){ return a.noc.n?a.noc.t:null; }, s:1},
+    {l:'TOTAL', f:function(a,dv){ return dv.mealTot; }, m:1},
+    {sec:'DESCUENTOS Y VOIDS'},
+    {l:'DESCUENTOS Y CORTESÍAS', f:function(a){ return a.desc.n?a.desc.t:null; }, s:1},
+    {l:'VOID ORDERS', f:function(a){ return a.voids.n?a.voids.t:null; }, s:1},
+    {sec:'SALES CAT. SUMMARY'},
+    {l:'FOOD', f:function(a){ return a.vC.n?a.vC.t:null; }, s:1},
+    {l:'LIQUOR', f:function(a){ return a.vL.n?a.vL.t:null; }, s:1},
+    {l:'BOTTLE BEER', f:function(){ return null; }},
+    {l:'DRAFT BEER', f:function(){ return null; }},
+    {l:'NA BEVERAGE', f:function(){ return null; }},
+    {l:'WINE', f:function(){ return null; }},
+    {sec:'GASTOS'},
+    {l:'TOTAL KITCHEN', f:function(a){ return a.gMC.n?a.gMC.t:null; }, s:1},
+    {l:'TOTAL BAR', f:function(a){ return a.gML.n?a.gML.t:null; }, s:1},
+    {l:'TOTAL FOH', f:function(a){ return a.gFOH.n?a.gFOH.t:null; }, s:1},
+    {l:'RENTA', f:function(a){ return a.gRenta.n?a.gRenta.t:null; }, s:1},
+    {l:'OTROS GASTOS', f:function(a){ return a.gOtros.n?a.gOtros.t:null; }, s:1},
+    {sec:'LABOR Y COSTOS'},
+    {l:'LABOR (NÓMINA)', f:function(a,dv,lb){ return lb; }, m:1},
+    {l:'COST OF GOODS', f:function(a,dv){ return dv.cogs; }, m:1},
+    {l:'FOOD COST %', f:function(a,dv){ return dv.foodPct; }, p:1},
+    {l:'LIQUOR COST %', f:function(a,dv){ return dv.liqPct; }, p:1},
+    {l:'LABOR %', f:function(a,dv){ return dv.labPct; }, p:1},
+    {l:'PRIME COST %', f:function(a,dv){ return dv.prime; }, p:1},
+    {l:'UTILIDAD', f:function(a,dv){ return dv.util; }, m:1}
+  ];
+}
+function formatoTable(cols){
+  cols.forEach(function(c){ c.dv=deriv(c.ag, c.labor); });
+  var rows=formatoRows();
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px"><tr><th style="text-align:left;padding:6px">Concepto</th>'+cols.map(function(c){ return '<th style="padding:6px;text-align:right">'+c.h+'</th>'; }).join('')+'</tr>';
+  rows.forEach(function(r){
+    if(r.sec){ h+='<tr><td colspan="'+(cols.length+1)+'" style="padding:8px 6px 3px;font-weight:700;background:#f4f2ee">'+r.sec+'</td></tr>'; return; }
+    h+='<tr style="border-top:1px solid #eee"><td style="padding:6px'+(r.m?';font-weight:700':'')+'">'+r.l+'</td>';
+    cols.forEach(function(c){
+      var v=r.f(c.ag, c.dv, c.labor, c.meta);
+      h+= r.p?pcell(v, r.m):(r.n?ncell(v, r.m):mcell(v, r.m));
+    });
+    h+='</tr>';
+  });
+  return h+'</table></div>';
+}
 function ventasToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
     [['dia','<svg class="ic"><use href="#i-cal"/></svg> Día'],['semana','<svg class="ic"><use href="#i-chart"/></svg> Semana'],['mes','<svg class="ic"><use href="#i-cal"/></svg> Mes'],['trimestre','<svg class="ic"><use href="#i-trend"/></svg> Trimestre']].map(function(v){
       return '<button class="btn '+(VENTAS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setVentasVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
-function semanaHtml(rows){
-  var w = {};
-  rows.forEach(function(r){
-    var f = String(r.fecha||'').substring(0,10); if (f.length<10) return;
-    var m = mondayOf(new Date(f+'T12:00:00'));
-    (w[m]=w[m]||[]).push(r);
-  });
-  var keys = Object.keys(w).sort().reverse();
-  if (!keys.length) return '<div class="empty">Sin ventas registradas.</div>';
-  return keys.map(function(m){
-    var tot = w[m].reduce(function(a,r){ return a+vTotal(r); },0);
-    var days = w[m].sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).map(function(r){
-      var f = String(r.fecha).substring(0,10);
-      var dw = DNAMES[new Date(f+'T12:00:00').getDay()];
-      return '<div class="row-item"><div><div class="t">'+dw+' · '+f+'</div><div class="s">Comedor '+money(r.comedor)+' · Llevar '+money(r.paraLlevar)+' · Delivery '+money(r.delivery)+'</div></div><div class="amt">'+money(vTotal(r))+'</div></div>';
-    }).join('');
-    return '<h2 class="st" style="margin-top:14px">Semana del '+m+'</h2>' +
-      '<div class="card" style="margin-bottom:8px"><div class="lbl">Total semana</div><div class="val money">'+money(tot)+'</div></div>' +
-      '<div class="list">'+days+'</div>';
-  }).join('');
+function diaNav(d){ var x=new Date(DIA_SEL+'T12:00:00'); x.setDate(x.getDate()+d); DIA_SEL=dStr(x); renderVentas(); }
+async function editarVentaDia(fecha){
+  var rows = await getRows('ventas');
+  var r = rows.find(function(x){ return String(x.fecha||'').substring(0,10)===fecha; });
+  if (r) openForm('ventas', r.id); else openForm('ventas', null, fecha);
 }
-function mesHtml(rows){
-  var mo = {};
-  rows.forEach(function(r){
-    var f = String(r.fecha||'').substring(0,10); if (f.length<7) return;
-    var k = f.substring(0,7);
-    (mo[k]=mo[k]||[]).push(r);
+function diaHtml(v,g){
+  var f=DIA_SEL;
+  var ag=aggRango(v,g,f,f);
+  var dw=DNAMES[new Date(f+'T12:00:00').getDay()];
+  var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="diaNav(-1)">‹</button>'
+    +'<input type="date" value="'+f+'" onchange="DIA_SEL=this.value;renderVentas()" style="padding:8px;border:1px solid #ddd;border-radius:8px">'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="diaNav(1)">›</button>'
+    +'<b>'+dw+' '+f+'</b>'
+    +'<button class="btn" style="margin:0 0 0 auto;padding:8px 12px" onclick="editarVentaDia(\''+f+'\')">Editar captura</button></div>';
+  if(!ag.n){ h+='<div class="empty">Sin ventas capturadas este día. Toca “Editar captura” para agregarlas.</div>'; }
+  h+=formatoTable([{h:dw+' '+f.substring(5), ag:ag, labor:null, meta:metaDia(f)}]);
+  h+='<p style="color:#888;font-size:12px">Labor del día no disponible: la nómina es semanal, se ve en la vista Semana. Las filas en — no se capturaron ese día.</p>';
+  if(ag.notas) h+='<p style="font-size:13px"><b>Notas:</b> '+esc(ag.notas)+'</p>';
+  return h;
+}
+function semNav(d){ var x=new Date((SEMANA_SEL||mondayOf(todayStr()))+'T12:00:00'); x.setDate(x.getDate()+d*7); SEMANA_SEL=dStr(x); renderVentas(); }
+function semanaHtml(v,g,n){
+  var mon=SEMANA_SEL||mondayOf(todayStr());
+  var days=[]; for(var i=0;i<7;i++){ var d=new Date(mon+'T12:00:00'); d.setDate(d.getDate()+i); days.push(dStr(d)); }
+  var sun=days[6];
+  var cols=days.map(function(f){ return {h:DNAMES[new Date(f+'T12:00:00').getDay()]+' '+f.substring(5), ag:aggRango(v,g,f,f), labor:null, meta:metaDia(f)}; });
+  cols.push({h:'TOTAL', ag:aggRango(v,g,mon,sun), labor:laborRango(n,mon,sun), meta:metaRango(mon,sun)});
+  var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="semNav(-1)">‹</button>'
+    +'<b>Semana del '+mon+' al '+sun+'</b>'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="semNav(1)">›</button></div>';
+  h+=formatoTable(cols);
+  h+='<p style="color:#888;font-size:12px">Meta semanal $54,000. Labor = nómina con periodoFin en la semana. Utilidad = ventas netas − gastos − nómina.</p>';
+  return h;
+}
+function mesNav(d){ var y=parseInt(MES_SEL.substring(0,4),10), m=parseInt(MES_SEL.substring(5,7),10)-1+d; var dt=new Date(y,m,1); MES_SEL=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); renderVentas(); }
+function mesHtml(v,g,n){
+  var y=parseInt(MES_SEL.substring(0,4),10), m=parseInt(MES_SEL.substring(5,7),10)-1;
+  var first=new Date(y,m,1), last=new Date(y,m+1,0);
+  var a=dStr(first), b=dStr(last);
+  var mons=[]; var d=new Date(mondayOf(a)+'T12:00:00');
+  while(dStr(d)<=b){ mons.push(dStr(d)); d.setDate(d.getDate()+7); }
+  var cols=mons.map(function(mon){
+    var s=new Date(mon+'T12:00:00'); var e=new Date(s); e.setDate(e.getDate()+6);
+    var ra=dStr(s)<a?a:dStr(s), rb=dStr(e)>b?b:dStr(e);
+    return {h:'Sem '+ra.substring(5), ag:aggRango(v,g,ra,rb), labor:laborRango(n,ra,rb), meta:metaRango(ra,rb)};
   });
-  var keys = Object.keys(mo).sort().reverse();
-  if (!keys.length) return '<div class="empty">Sin ventas registradas.</div>';
-  return keys.map(function(k){
-    var y = k.substring(0,4), m = parseInt(k.substring(5,7),10);
-    var tot = mo[k].reduce(function(a,r){ return a+vTotal(r); },0);
-    var wk = {};
-    mo[k].forEach(function(r){
-      var f = String(r.fecha).substring(0,10);
-      var mon = mondayOf(new Date(f+'T12:00:00'));
-      wk[mon] = (wk[mon]||0) + vTotal(r);
-    });
-    var wks = Object.keys(wk).sort().map(function(wm){
-      return '<div class="row-item"><div><div class="t">Semana del '+wm+'</div></div><div class="amt">'+money(wk[wm])+'</div></div>';
-    }).join('');
-    return '<h2 class="st" style="margin-top:14px">'+MNAMES[m]+' '+y+'</h2>' +
-      '<div class="card" style="margin-bottom:8px"><div class="lbl">Total mes</div><div class="val money">'+money(tot)+'</div></div>' +
-      '<div class="list">'+wks+'</div>';
-  }).join('');
+  cols.push({h:'TOTAL MES', ag:aggRango(v,g,a,b), labor:laborRango(n,a,b), meta:metaRango(a,b)});
+  var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="mesNav(-1)">‹</button>'
+    +'<b>'+MNAMES[m+1]+' '+y+'</b>'
+    +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="mesNav(1)">›</button></div>';
+  h+=formatoTable(cols);
+  h+='<p style="color:#888;font-size:12px">Cada columna es una semana (lun–dom) dentro del mes. Labor = nómina con periodoFin en el rango.</p>';
+  return h;
 }
 /* ============ CONTROL DEL TRIMESTRE ============ */
 var TRIM = (function(){ var d=new Date(); return {q:Math.floor(d.getMonth()/3)+1, y:d.getFullYear()}; })();
@@ -738,55 +875,36 @@ function trimNav(d){ TRIM.q+=d; if(TRIM.q<1){TRIM.q=4;TRIM.y--;} if(TRIM.q>4){TR
 function trimHtml(v,g,n){
   var months=[(TRIM.q-1)*3,(TRIM.q-1)*3+1,(TRIM.q-1)*3+2];
   var mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  function inMY(rows,mi,f){ return rows.filter(function(r){ var d=new Date(String(r[f||'fecha']).substring(0,10)+'T12:00:00'); return !isNaN(d) && d.getFullYear()===TRIM.y && d.getMonth()===mi; }); }
-  var cols=months.map(function(mi){
-    var vv=inMY(v,mi), gg=inMY(g,mi), nn=inMY(n,mi,'periodoFin');
-    var vC=sum(vv.map(function(r){return r.ventaComida;})), vL=sum(vv.map(function(r){return r.ventaLicor;}));
-    var vT=vC+vL; if(!vT) vT=sum(vv.map(vTotal));
-    var gMC=sum(gg.filter(function(r){return r.categoria==='Mercancía Comida';}).map(function(r){return r.monto;}));
-    var gML=sum(gg.filter(function(r){return r.categoria==='Mercancía Licor';}).map(function(r){return r.monto;}));
-    var gT=sum(gg.map(function(r){return r.monto;}));
-    var nom=sum(nn.map(function(r){return r.neto;}));
-    return {vC:vC,vL:vL,vT:vT,gMC:gMC,gML:gML,nom:nom,gT:gT,
-      foodPct:vC>0?gMC/vC*100:0, liqPct:vL>0?gML/vL*100:0, labPct:vT>0?nom/vT*100:0, util:vT-gT-nom};
-  });
-  var tot={}; ['vC','vL','vT','gMC','gML','nom','util'].forEach(function(k){ tot[k]=cols.reduce(function(a,c){return a+c[k];},0); });
-  tot.foodPct=tot.vC>0?tot.gMC/tot.vC*100:0; tot.liqPct=tot.vL>0?tot.gML/tot.vL*100:0; tot.labPct=tot.vT>0?tot.nom/tot.vT*100:0;
-  var K=[['Ventas comida','vC',1],['Ventas licor','vL',1],['Ventas netas','vT',1],
-    ['Gasto mercancía comida','gMC',1],['Gasto mercancía licor','gML',1],['Nómina (labor)','nom',1],
-    ['Food Cost %','foodPct',2],['Liquor Cost %','liqPct',2],['Labor %','labPct',2],['Utilidad comercial','util',1]];
+  function mRange(mi){ var a=TRIM.y+'-'+String(mi+1).padStart(2,'0')+'-01'; var b=TRIM.y+'-'+String(mi+1).padStart(2,'0')+'-'+new Date(TRIM.y,mi+1,0).getDate(); return [a,b]; }
+  var cols=months.map(function(mi){ var r=mRange(mi); return {h:mn[mi], ag:aggRango(v,g,r[0],r[1]), labor:laborRango(n,r[0],r[1]), meta:metaRango(r[0],r[1])}; });
+  var q0=mRange(months[0])[0], q1=mRange(months[2])[1];
+  cols.push({h:'TRIM', ag:aggRango(v,g,q0,q1), labor:laborRango(n,q0,q1), meta:metaRango(q0,q1)});
   var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="trimNav(-1)">‹</button>'
     +'<b>Q'+TRIM.q+' '+TRIM.y+'</b>'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="trimNav(1)">›</button></div>';
-  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:340px"><tr><th style="text-align:left;padding:6px">KPI</th>'
-    +months.map(function(mi){return '<th style="padding:6px">'+mn[mi]+'</th>';}).join('')+'<th style="padding:6px">Trim</th></tr>';
-  K.forEach(function(k){
-    h+='<tr style="border-top:1px solid #eee"><td style="padding:6px">'+k[0]+'</td>'
-      +cols.map(function(c){ return '<td style="text-align:right;padding:6px">'+(k[2]===2?pct(c[k[1]]):money(c[k[1]]))+'</td>'; }).join('')
-      +'<td style="text-align:right;padding:6px"><b>'+(k[2]===2?pct(tot[k[1]]):money(tot[k[1]]))+'</b></td></tr>';
-  });
-  return h+'</table></div><p style="color:#888;font-size:12px">Utilidad comercial = ventas netas − gastos − nómina.</p>';
+  h+=formatoTable(cols);
+  h+='<p style="color:#888;font-size:12px">Meta mensual = suma de las metas diarias del formato ($54,000/semana). Utilidad = ventas netas − gastos − nómina.</p>';
+  return h;
 }
 async function renderVentas(){
   var el = document.getElementById('v-ventas');
-  el.innerHTML = '<h2 class="st">Ventas</h2>'+ventasToggle()+'<div id="ventas-body"><div class="empty">Cargando…</div></div>';
+  el.innerHTML = '<h2 class="st">Ventas · Formato OP-ADMIN</h2>'+ventasToggle()+'<div id="ventas-body"><div class="empty">Cargando…</div></div>';
   try {
-    if (VENTAS_VISTA==='trimestre'){
-      var vg = await api('list',{tab:'ventas'}), gg = await api('list',{tab:'gastos'}), ng = await api('list',{tab:'nomina'});
-      document.getElementById('ventas-body').innerHTML = trimHtml(vg.rows||[],gg.rows||[],ng.rows||[]);
-      return;
+    var v = await getRows('ventas'), g = await getRows('gastos'), n = await getRows('nomina');
+    if(!DIA_INIT){
+      DIA_INIT=true;
+      var maxf='';
+      v.forEach(function(r){ var f=String(r.fecha||'').substring(0,10); if(f.length===10&&f>maxf) maxf=f; });
+      if(maxf){ DIA_SEL=maxf; SEMANA_SEL=mondayOf(maxf); MES_SEL=maxf.substring(0,7); }
+      else { SEMANA_SEL=mondayOf(todayStr()); }
     }
-    var rows = await getRows('ventas');
+    if(!SEMANA_SEL) SEMANA_SEL=mondayOf(DIA_SEL);
     var body = document.getElementById('ventas-body');
-    if (VENTAS_VISTA==='dia'){
-      body.innerHTML = '<div class="toolbar"><input id="q-ventas" placeholder="Buscar…" oninput="filterList(\'ventas\')"></div><div class="list" id="list-ventas"></div>';
-      paintList('ventas', rows);
-    } else if (VENTAS_VISTA==='semana'){
-      body.innerHTML = semanaHtml(rows);
-    } else {
-      body.innerHTML = mesHtml(rows);
-    }
+    if (VENTAS_VISTA==='dia') body.innerHTML = diaHtml(v,g);
+    else if (VENTAS_VISTA==='semana') body.innerHTML = semanaHtml(v,g,n);
+    else if (VENTAS_VISTA==='mes') body.innerHTML = mesHtml(v,g,n);
+    else body.innerHTML = trimHtml(v,g,n);
   } catch(e){ document.getElementById('ventas-body').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 RENDER['ventas'] = renderVentas;
@@ -878,7 +996,7 @@ function fldHtml(f, val){
   var step = f.t==='number' ? 'step="0.01"' : '';
   return '<label>'+f.l+'</label><input id="f_'+f.k+'" type="'+type+'" '+step+' value="'+esc(val)+'" '+req+'>';
 }
-async function openForm(key, id){
+async function openForm(key, id, fechaPreset){
   key = key || CUR; if (key==='dash') return;
   var def = TABDEF[key];
   var rec = {};
@@ -886,7 +1004,7 @@ async function openForm(key, id){
     var rows = await getRows(def.tab);
     rec = rows.find(function(r){ return String(r.id)===String(id); }) || {};
   } else {
-    if (def.fields.some(function(f){return f.k==='fecha';})) rec.fecha = todayStr();
+    if (def.fields.some(function(f){return f.k==='fecha';})) rec.fecha = fechaPreset || todayStr();
     if (def.fields.some(function(f){return f.k==='activo';})) rec.activo = 'Sí';
     if (def.fields.some(function(f){return f.k==='pagado';})) rec.pagado = 'No';
     if (def.fields.some(function(f){return f.k==='tipo';})) rec.tipo = (MENU_FILT==='Comida'||MENU_FILT==='Barra') ? MENU_FILT : 'Comida';
@@ -909,7 +1027,8 @@ async function saveForm(ev, key, id){
   if (key==='ventas' && !rec.total) {
     var ch=(parseFloat(rec.comedor)||0)+(parseFloat(rec.paraLlevar)||0)+(parseFloat(rec.delivery)||0);
     var fl=(parseFloat(rec.ventaComida)||0)+(parseFloat(rec.ventaLicor)||0);
-    rec.total = ch>0?ch:fl;
+    var mp=(parseFloat(rec.desayuno)||0)+(parseFloat(rec.comida)||0)+(parseFloat(rec.cena)||0)+(parseFloat(rec.noche)||0);
+    rec.total = ch>0?ch:(fl>0?fl:mp);
   }
   if (key==='nomina') {
     var vb = parseFloat(rec.ventasBrutas)||0, pd = parseFloat(rec.propinasDeclaradas)||0;
@@ -925,7 +1044,7 @@ async function saveForm(ev, key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
   return false;
 }
@@ -937,7 +1056,7 @@ async function delRec(key, id){
     if (!d.ok) throw new Error(d.error);
     delete CACHE[def.tab];
     closeModal();
-    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else renderList(key);
+    if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
 }
 </script>
