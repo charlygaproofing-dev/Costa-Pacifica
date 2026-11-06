@@ -1038,6 +1038,10 @@ async function saveForm(ev, key, id){
     var sc = ['actitud','conocimiento','ejecucion','equipo','comunicacion'].map(function(k){ return parseFloat(rec[k])||0; }).filter(function(x){ return x>0; });
     if (sc.length) rec.promedio = Math.round(sc.reduce(function(a,b){return a+b;},0)/sc.length*10)/10;
   }
+  /* Fechas como texto: el backend convierte las fechas a Date y la zona horaria del script las regresa un día antes (v1.21: 5-nov se leía 4-nov). El apóstrofe las guarda como texto "YYYY-MM-DD" y se leen igual. */
+  def.fields.forEach(function(f){
+    if (f.t==='date' && /^\d{4}-\d{2}-\d{2}$/.test(rec[f.k]||'')) rec[f.k] = "'" + rec[f.k];
+  });
   try {
     var d = id ? await api('update', { tab:def.tab, id:id, fields:rec }, true)
                : await api('create', { tab:def.tab, record:rec }, true);
