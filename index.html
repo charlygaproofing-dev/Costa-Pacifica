@@ -418,6 +418,7 @@ var TABDEF = {
       {k:'descripcion',l:'Descripción',t:'text',req:1},
       {k:'monto',l:'Monto $',t:'number',req:1},
       {k:'metodoPago',l:'Método de pago',t:'select',opts:['Efectivo','Tarjeta','Transferencia','Cheque']},
+      {k:'recibo',l:'Foto del ticket',t:'foto'},
       {k:'notas',l:'Notas',t:'text'}
     ],
     row:function(r){ return {t:esc(r.descripcion||''), s:esc(r.fecha||'')+' · '+esc(r.categoria||'')+(r.proveedor?' · '+esc(r.proveedor):''), amt:money(r.monto), badge:esc(r.categoria||'')}; } },
@@ -991,10 +992,36 @@ function fldHtml(f, val){
     return '<label>'+f.l+'</label><select id="f_'+f.k+'" '+req+'><option value="">—</option>' +
       f.opts.map(function(o){ return '<option value="'+esc(o)+'"'+(String(val)===String(o)?' selected':'')+'>'+esc(o)+'</option>'; }).join('') + '</select>';
   }
+  if (f.t==='foto') {
+    var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">Ver foto actual</a></div>' : '';
+    return '<label>'+f.l+'</label>' + link +
+      '<input id="f_'+f.k+'" type="hidden" value="'+esc(val)+'">' +
+      '<input id="foto_'+f.k+'" type="file" accept="image/*" capture="environment" onchange="fotoPreview(this,\'prev_'+f.k+'\')">' +
+      '<img id="prev_'+f.k+'" alt="" style="display:none;max-width:160px;max-height:160px;border-radius:8px;margin-top:6px">';
+  }
   if (f.t==='textarea' || f.k==='notas') return '<label>'+f.l+'</label><textarea id="f_'+f.k+'">'+esc(val)+'</textarea>';
   var type = f.t==='number' ? 'number' : (f.t==='date' ? 'date' : 'text');
   var step = f.t==='number' ? 'step="0.01"' : '';
   return '<label>'+f.l+'</label><input id="f_'+f.k+'" type="'+type+'" '+step+' value="'+esc(val)+'" '+req+'>';
+}
+function fotoPreview(input, imgId){
+  var img = document.getElementById(imgId);
+  if (!img) return;
+  if (input.files && input.files[0]) {
+    img.src = URL.createObjectURL(input.files[0]);
+    img.style.display = 'block';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+  }
+}
+function leerFotoBase64(file){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(String(r.result || '')); };
+    r.onerror = function(){ reject(new Error('No se pudo leer la foto')); };
+    r.readAsDataURL(file);
+  });
 }
 async function openForm(key, id, fechaPreset){
   key = key || CUR; if (key==='dash') return;
@@ -1020,6 +1047,7 @@ async function saveForm(ev, key, id){
   ev.preventDefault();
   var def = TABDEF[key];
   var rec = { sucursal: SUC };
+  var fotoFallo = false, guardado = false;
   def.fields.forEach(function(f){
     var el = document.getElementById('f_'+f.k);
     rec[f.k] = el ? el.value.trim() : '';
@@ -1038,6 +1066,20 @@ async function saveForm(ev, key, id){
     var sc = ['actitud','conocimiento','ejecucion','equipo','comunicacion'].map(function(k){ return parseFloat(rec[k])||0; }).filter(function(x){ return x>0; });
     if (sc.length) rec.promedio = Math.round(sc.reduce(function(a,b){return a+b;},0)/sc.length*10)/10;
   }
+  if (key==='gastos') {
+    /* Foto del ticket: se sube ANTES de guardar; el link de Drive queda en recibo.
+       Si la subida falla, el gasto se guarda sin foto y se avisa al final. */
+    var fotoEl = document.getElementById('foto_recibo');
+    if (fotoEl && fotoEl.files && fotoEl.files[0]) {
+      try {
+        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('La foto pesa más de 15 MB');
+        var dataUrl = await leerFotoBase64(fotoEl.files[0]);
+        var up = await api('uploadTicket', { data:dataUrl, mimeType: fotoEl.files[0].type || 'image/jpeg', fecha: rec.fecha, proveedor: rec.proveedor }, true);
+        if (!up.ok || !up.url) throw new Error(up.error || 'El servidor no devolvió el link');
+        rec.recibo = up.url;
+      } catch(e){ fotoFallo = true; }
+    }
+  }
   /* Fechas como texto: el backend convierte las fechas a Date y la zona horaria del script las regresa un día antes (v1.21: 5-nov se leía 4-nov). El apóstrofe las guarda como texto "YYYY-MM-DD" y se leen igual. */
   def.fields.forEach(function(f){
     if (f.t==='date' && /^\d{4}-\d{2}-\d{2}$/.test(rec[f.k]||'')) rec[f.k] = "'" + rec[f.k];
@@ -1046,10 +1088,12 @@ async function saveForm(ev, key, id){
     var d = id ? await api('update', { tab:def.tab, id:id, fields:rec }, true)
                : await api('create', { tab:def.tab, record:rec }, true);
     if (!d.ok) throw new Error(d.error);
+    guardado = true;
     delete CACHE[def.tab];
     closeModal();
     if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
+  if (guardado && fotoFallo) alert('El gasto se guardó, pero la foto del ticket NO se subió. Edita el gasto e intenta adjuntarla de nuevo.');
   return false;
 }
 async function delRec(key, id){
