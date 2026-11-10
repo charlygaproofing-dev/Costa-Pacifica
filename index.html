@@ -418,7 +418,7 @@ var TABDEF = {
       {k:'descripcion',l:'Descripción',t:'text',req:1},
       {k:'monto',l:'Monto $',t:'number',req:1},
       {k:'metodoPago',l:'Método de pago',t:'select',opts:['Efectivo','Tarjeta','Transferencia','Cheque']},
-      {k:'recibo',l:'Foto del ticket',t:'foto'},
+      {k:'recibo',l:'Foto o PDF del ticket',t:'foto'},
       {k:'notas',l:'Notas',t:'text'}
     ],
     row:function(r){ return {t:esc(r.descripcion||''), s:esc(r.fecha||'')+' · '+esc(r.categoria||'')+(r.proveedor?' · '+esc(r.proveedor):''), amt:money(r.monto), badge:esc(r.categoria||'')}; } },
@@ -993,26 +993,38 @@ function fldHtml(f, val){
       f.opts.map(function(o){ return '<option value="'+esc(o)+'"'+(String(val)===String(o)?' selected':'')+'>'+esc(o)+'</option>'; }).join('') + '</select>';
   }
   if (f.t==='foto') {
-    var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">Ver foto actual</a></div>' : '';
+    var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">Ver archivo actual</a></div>' : '';
     return '<label>'+f.l+'</label>' + link +
       '<input id="f_'+f.k+'" type="hidden" value="'+esc(val)+'">' +
-      '<input id="foto_'+f.k+'" type="file" accept="image/*" capture="environment" onchange="fotoPreview(this,\'prev_'+f.k+'\')">' +
-      '<img id="prev_'+f.k+'" alt="" style="display:none;max-width:160px;max-height:160px;border-radius:8px;margin-top:6px">';
+      '<input id="foto_'+f.k+'" type="file" accept="image/*,.pdf,application/pdf" onchange="fotoPreview(this,\'prev_'+f.k+'\',\'nom_'+f.k+'\')">' +
+      '<img id="prev_'+f.k+'" alt="" style="display:none;max-width:160px;max-height:160px;border-radius:8px;margin-top:6px">' +
+      '<div id="nom_'+f.k+'" style="display:none;margin-top:6px;font-size:13px"></div>';
   }
   if (f.t==='textarea' || f.k==='notas') return '<label>'+f.l+'</label><textarea id="f_'+f.k+'">'+esc(val)+'</textarea>';
   var type = f.t==='number' ? 'number' : (f.t==='date' ? 'date' : 'text');
   var step = f.t==='number' ? 'step="0.01"' : '';
   return '<label>'+f.l+'</label><input id="f_'+f.k+'" type="'+type+'" '+step+' value="'+esc(val)+'" '+req+'>';
 }
-function fotoPreview(input, imgId){
+function fotoPreview(input, imgId, nomId){
   var img = document.getElementById(imgId);
+  var nom = document.getElementById(nomId);
   if (!img) return;
   if (input.files && input.files[0]) {
-    img.src = URL.createObjectURL(input.files[0]);
-    img.style.display = 'block';
+    var file = input.files[0];
+    var esPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (esPdf) {
+      img.removeAttribute('src');
+      img.style.display = 'none';
+      if (nom) { nom.textContent = 'PDF: ' + file.name; nom.style.display = 'block'; }
+    } else {
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+      if (nom) { nom.textContent = ''; nom.style.display = 'none'; }
+    }
   } else {
     img.removeAttribute('src');
     img.style.display = 'none';
+    if (nom) { nom.textContent = ''; nom.style.display = 'none'; }
   }
 }
 function leerFotoBase64(file){
@@ -1072,9 +1084,10 @@ async function saveForm(ev, key, id){
     var fotoEl = document.getElementById('foto_recibo');
     if (fotoEl && fotoEl.files && fotoEl.files[0]) {
       try {
-        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('La foto pesa más de 15 MB');
+        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('El archivo pesa más de 15 MB');
         var dataUrl = await leerFotoBase64(fotoEl.files[0]);
-        var up = await api('uploadTicket', { data:dataUrl, mimeType: fotoEl.files[0].type || 'image/jpeg', fecha: rec.fecha, proveedor: rec.proveedor }, true);
+        var tipoArchivo = fotoEl.files[0].type || (/\.pdf$/i.test(fotoEl.files[0].name) ? 'application/pdf' : 'image/jpeg');
+        var up = await api('uploadTicket', { data:dataUrl, mimeType: tipoArchivo, fecha: rec.fecha, proveedor: rec.proveedor }, true);
         if (!up.ok || !up.url) throw new Error(up.error || 'El servidor no devolvió el link');
         rec.recibo = up.url;
       } catch(e){ fotoFallo = true; }
@@ -1093,7 +1106,7 @@ async function saveForm(ev, key, id){
     closeModal();
     if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
-  if (guardado && fotoFallo) alert('El gasto se guardó, pero la foto del ticket NO se subió. Edita el gasto e intenta adjuntarla de nuevo.');
+  if (guardado && fotoFallo) alert('El gasto se guardó, pero el archivo del ticket NO se subió. Edita el gasto e intenta adjuntarlo de nuevo.');
   return false;
 }
 async function delRec(key, id){
