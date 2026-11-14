@@ -392,6 +392,37 @@ async function rDash(){
         var h = Math.round(hrs[id]*10)/10;
         return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(h>=40?'Pasó las 40h':'Cuidado con las horas')+' · cuidar el costo</div></div><span class="badge '+(h>=40?'bad':'warn')+'">'+h+'h</span></div>';
       }).join('');
+    /* ---- Plan de la semana (forecast) ---- */
+    var KPI = { comida: 28, licor: 21, labor: 28 };
+    var wdSum = [0,0,0,0,0,0,0], wdCnt = [0,0,0,0,0,0,0], histTot = 0, histCom = 0, histLic = 0;
+    ventas.forEach(function(r){
+      var f = String(r.fecha||'').substring(0,10); if (!f) return;
+      var wd = (new Date(f+'T12:00:00').getDay()+6)%7;
+      var t = vTotal(r); wdSum[wd]+=t; wdCnt[wd]++; histTot+=t; histCom+=parseFloat(r.ventaComida)||0; histLic+=parseFloat(r.ventaLicor)||0;
+    });
+    var wdAvg = wdSum.map(function(s,i){ return wdCnt[i]? s/wdCnt[i] : 0; });
+    var semProm = wdAvg.reduce(function(a,b2){return a+b2;},0);
+    var pesos = wdAvg.map(function(a){ return semProm>0? a/semProm : 1/7; });
+    var shareCom = histTot>0? histCom/histTot : 0, shareLic = histTot>0? histLic/histTot : 0;
+    var diasSem = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    var pesoRest = 0; dias.forEach(function(x,i){ if (x.f>=hoy) pesoRest += pesos[i]; });
+    var planHtml = dias.map(function(x,i){
+      var metaD = META*pesos[i], pronD = semProm*pesos[i];
+      var necD = (x.f>=hoy && falta>0 && pesoRest>0) ? falta*(pesos[i]/pesoRest) : 0;
+      var real = x.f<hoy ? money(x.v) : (x.f===hoy ? money(x.v)+' (hoy)' : '—');
+      var s = 'Meta '+money(metaD)+' · Pronóstico '+money(pronD)+(necD>0?' · Necesaria '+money(necD):'');
+      return '<div class="row-item"><div><div class="t">'+diasSem[i]+' '+x.f.substring(5).replace('-','/')+'</div><div class="s">'+s+'</div></div><div class="amt">'+real+'</div></div>';
+    }).join('');
+    function presRow(nombre, gastado, permitido, totalSem){
+      if (gastado==null) return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Sin datos cargados esta semana · presupuesto total '+money(totalSem)+'</div></div><span class="badge warn">sin datos</span></div>';
+      var diff = gastado - permitido;
+      var ok = diff<=0;
+      return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Gastado '+money(gastado)+' · permitido al día '+money(permitido)+' · total semana '+money(totalSem)+'</div></div><span class="badge '+(ok?'':'bad')+'">'+(ok?'dentro':'pasado '+money(diff))+'</span></div>';
+    }
+    var presHtml =
+      presRow('Comida · 28%', gCat['Mercancía Comida']||0, KPI.comida/100*vComida, KPI.comida/100*semProm*shareCom) +
+      presRow('Licor · 21%', gCat['Mercancía Licor']||0, KPI.licor/100*vLicor, KPI.licor/100*semProm*shareLic) +
+      presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*semProm);
     el.innerHTML =
       '<h2 class="st">Semana · '+mon.substring(5).replace('-','/')+' al '+sun.substring(5).replace('-','/')+'</h2>' +
       '<div class="cards">' +
@@ -408,10 +439,12 @@ async function rDash(){
         '<div class="card"><div class="lbl">Por pagar</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pendiente(s)</div></div>' +
       '</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Costo de comida</div><div class="val">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Mercancía comida '+money(gCat['Mercancía Comida']||0)+' ÷ venta comida '+money(vComida)+'</div></div>' +
-        '<div class="card"><div class="lbl">Costo de licor</div><div class="val">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Mercancía licor '+money(gCat['Mercancía Licor']||0)+' ÷ venta licor '+money(vLicor)+'</div></div>' +
+        '<div class="card"><div class="lbl">Costo de comida</div><div class="val '+((costoComida!=null&&costoComida>28)?'neg':'')+'">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Meta 28% · Mercancía comida '+money(gCat['Mercancía Comida']||0)+' ÷ venta comida '+money(vComida)+'</div></div>' +
+        '<div class="card"><div class="lbl">Costo de licor</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Meta 21% · Mercancía licor '+money(gCat['Mercancía Licor']||0)+' ÷ venta licor '+money(vLicor)+'</div></div>' +
       '</div>' +
       '<h2 class="st">Ventas por día · semana</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
+      '<h2 class="st">Plan de la semana · pronóstico '+money(semProm)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
+      '<h2 class="st">Presupuesto de gasto acumulado</h2><div class="list" style="margin-bottom:14px">'+presHtml+'</div>' +
       '<h2 class="st">Gastos de la semana · '+money(gTot)+'</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
       '<h2 class="st">Por pagar · '+money(ppTot)+'</h2><div class="list" style="margin-bottom:14px">'+ppHtml+'</div>' +
       (hAlert ? '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' : '') +
