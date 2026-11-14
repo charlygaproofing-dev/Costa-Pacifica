@@ -313,68 +313,110 @@ async function rDash(){
     var b = res[0].dashboard, ventas = res[1].rows||[], gastos = res[2].rows||[], nom = res[3].rows||[];
     var now = new Date(), hoy = dStr(now);
     var ayer = dStr(new Date(now.getTime()-864e5));
-    var vHoy = 0, vAyer = 0;
-    var last7 = [];
-    for (var i=6;i>=0;i--){ var dt = new Date(now.getTime()-i*864e5); last7.push({ f: dStr(dt), dw: 'D L M M J V S'[dt.getDay()*2]||'', v: 0 }); }
+    var mon = mondayOf(hoy);
+    var monD = new Date(mon+'T12:00:00');
+    var sun = dStr(new Date(monD.getTime()+6*864e5));
+    var META = 54000;
+    function enSem(f){ return f>=mon && f<=sun; }
+    /* ---- Ventas de la semana ---- */
+    var vSem=0, vComida=0, vLicor=0, invSem=0, vHoy=0, vAyer=0;
+    var dias = [];
+    for (var i=0;i<7;i++){ var dt = new Date(monD.getTime()+i*864e5); dias.push({ f: dStr(dt), dw: 'L M M J V S D'[i*2]||'', v: 0 }); }
     ventas.forEach(function(r){
       var f = String(r.fecha||'').substring(0,10), t = vTotal(r);
       if (f===hoy) vHoy += t;
       if (f===ayer) vAyer += t;
-      for (var i=0;i<7;i++) if (last7[i].f===f) last7[i].v += t;
+      if (enSem(f)){
+        vSem += t; vComida += parseFloat(r.ventaComida)||0; vLicor += parseFloat(r.ventaLicor)||0; invSem += parseFloat(r.invitados)||0;
+        for (var i=0;i<7;i++) if (dias[i].f===f) dias[i].v += t;
+      }
     });
-    var chg = vAyer>0 ? Math.round((vHoy-vAyer)/vAyer*100) : (vHoy>0?100:0);
-    var chgHtml = vHoy===0&&vAyer===0 ? '' : '<div style="font-size:12px;color:'+(chg>=0?'var(--green)':'var(--red)')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg)+'% vs ayer</div>';
-    var maxV = Math.max.apply(null, last7.map(function(x){return x.v;}).concat([1]));
-    var bars = last7.map(function(x){
+    var ppa = invSem>0 ? vSem/invSem : 0;
+    var avance = META>0 ? vSem/META*100 : 0;
+    var falta = Math.max(0, META - vSem);
+    var diasRest = Math.max(1, Math.round((new Date(sun+'T12:00:00') - new Date(hoy+'T12:00:00'))/864e5) + 1);
+    var porDia = falta>0 ? falta/diasRest : 0;
+    var maxV = Math.max.apply(null, dias.map(function(x){return x.v;}).concat([1]));
+    var bars = dias.map(function(x){
       var h = Math.max(4, Math.round(x.v/maxV*64));
-      var wd = x.f.substring(5).replace('-','/');
-      return '<div style="flex:1;text-align:center"><div style="height:70px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;height:'+h+'px;background:'+(x.f===hoy?'var(--teal)':'#bcd9d8')+';border-radius:4px 4px 0 0"></div></div><div style="font-size:10px;color:var(--muted)">'+x.dw+'<br>'+wd+'</div></div>';
+      var fut = x.f>hoy;
+      return '<div style="flex:1;text-align:center"><div style="height:70px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;height:'+h+'px;background:'+(x.f===hoy?'var(--teal)':(fut?'#e8e8e8':'#bcd9d8'))+';border-radius:4px 4px 0 0"></div></div><div style="font-size:10px;color:var(--muted)">'+x.dw+'<br>'+x.f.substring(5).replace('-','/')+'</div></div>';
     }).join('');
-    var w0 = dStr(new Date(now.getTime()-6*864e5));
+    /* ---- Gastos de la semana ---- */
     var gCat = {}, gTot = 0;
     gastos.forEach(function(r){
       var f = String(r.fecha||'').substring(0,10);
-      if (f>=w0){ var c=r.categoria||'Otros', m=parseFloat(r.monto)||0; gCat[c]=(gCat[c]||0)+m; gTot+=m; }
+      if (enSem(f)){ var c=r.categoria||'Otros', m=parseFloat(r.monto)||0; gCat[c]=(gCat[c]||0)+m; gTot+=m; }
     });
-    var gTop = Object.keys(gCat).sort(function(a,b2){return gCat[b2]-gCat[a];}).slice(0,5);
-    var gHtml = gTop.map(function(c){
-      var pct = gTot>0?Math.round(gCat[c]/gTot*100):0;
-      return '<div class="row-item"><div><div class="t">'+esc(c)+'</div><div style="height:6px;background:#eee;border-radius:3px;margin-top:4px;width:140px"><div style="height:6px;width:'+pct+'%;background:var(--teal);border-radius:3px"></div></div></div><div class="amt">'+money(gCat[c])+'</div></div>';
+    var gList = Object.keys(gCat).sort(function(a,b2){return gCat[b2]-gCat[a];});
+    var gHtml = gList.map(function(c){
+      var ps = vSem>0 ? (gCat[c]/vSem*100) : 0;
+      var pt = gTot>0 ? Math.round(gCat[c]/gTot*100) : 0;
+      return '<div class="row-item"><div><div class="t">'+esc(c)+'</div><div style="height:6px;background:#eee;border-radius:3px;margin-top:4px;width:140px"><div style="height:6px;width:'+pt+'%;background:var(--teal);border-radius:3px"></div></div></div><div style="text-align:right"><div class="amt">'+money(gCat[c])+'</div><div class="s">'+ps.toFixed(1)+'% de ventas</div></div></div>';
     }).join('') || '<div class="empty">Sin gastos esta semana</div>';
-    var nPend = nom.filter(function(r){ var p=String(r.pagado||'').toLowerCase(); return p!=='sí'&&p!=='si'; });
-    var nTot = nPend.reduce(function(a,r){return a+(parseFloat(r.neto)||0);},0);
+    var costoComida = vComida>0 ? (gCat['Mercancía Comida']||0)/vComida*100 : null;
+    var costoLicor = vLicor>0 ? (gCat['Mercancía Licor']||0)/vLicor*100 : null;
+    /* ---- Labor (nómina cargada en el app) ---- */
+    var nomSem = nom.filter(function(r){ var f=String(r.periodoInicio||'').substring(0,10); return enSem(f); });
+    var labor = nomSem.length ? nomSem.reduce(function(a,r){return a+(parseFloat(r.neto)||0);},0) : null;
+    var laborPct = (labor!=null && vSem>0) ? labor/vSem*100 : null;
+    /* ---- Resultado al momento ---- */
+    var resultado = vSem - gTot - (labor||0);
+    var margen = vSem>0 ? resultado/vSem*100 : 0;
+    /* ---- Por pagar (invoices marcados por pagar) ---- */
+    var porPagar = [];
+    gastos.forEach(function(r){
+      var mp = String(r.metodoPago||'').trim();
+      var txt = ((r.notas||'')+' '+(r.descripcion||'')).toLowerCase();
+      if (!mp && (txt.indexOf('por pagar')>=0 || txt.indexOf('invoice')>=0)){
+        var m = String(r.notas||'').match(/(\d{4}-\d{2}-\d{2})/);
+        porPagar.push({ prov: r.proveedor||r.descripcion||'Invoice', desc: r.descripcion||'', monto: parseFloat(r.monto)||0, vence: m?m[1]:'' });
+      }
+    });
+    porPagar.sort(function(a,b2){ return (a.vence||'9999') < (b2.vence||'9999') ? -1 : 1; });
+    var ppTot = porPagar.reduce(function(a,r){return a+r.monto;},0);
+    var ppHtml = porPagar.map(function(r){
+      var venc = r.vence ? ('Vence '+r.vence.substring(5).replace('-','/')+'/'+r.vence.substring(0,4)) : 'Sin fecha de vencimiento';
+      var tarde = r.vence && r.vence<hoy;
+      return '<div class="row-item"><div><div class="t">'+esc(r.prov)+'</div><div class="s">'+esc(r.desc)+' · '+venc+'</div></div><span class="amt"'+(tarde?' style="color:var(--red)"':'')+'>'+money(r.monto)+'</span></div>';
+    }).join('') || '<div class="empty">Nada por pagar</div>';
+    /* ---- Inventario bajo / horas ---- */
     var inv = (b.inventarioBajo||[]).map(function(r){
       return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Mínimo: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
     }).join('') || '<div class="empty">Todo en niveles normales</div>';
-    var mon = mondayOf(hoy);
-    var sun = dStr(new Date(new Date(mon+'T12:00:00').getTime()+6*864e5));
     var hrs = {};
-    nom.forEach(function(r){
-      var f = String(r.periodoInicio||'').substring(0,10);
-      if (f>=mon && f<=sun){ var id=r.personalId||'?'; hrs[id]=(hrs[id]||0)+(parseFloat(r.horas)||0); }
-    });
+    nomSem.forEach(function(r){ var id=r.personalId||'?'; hrs[id]=(hrs[id]||0)+(parseFloat(r.horas)||0); });
     var hAlert = Object.keys(hrs).filter(function(id){ return hrs[id]>=35; })
-      .sort(function(a,b){return hrs[b]-hrs[a];})
+      .sort(function(a,b2){return hrs[b2]-hrs[a];})
       .map(function(id){
         var h = Math.round(hrs[id]*10)/10;
-        var over = h>=40;
-        return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(over?'Pasó las 40h':'Cuidado con las horas')+' · cuidar el costo</div></div><span class="badge '+(over?'bad':'warn')+'">'+h+'h</span></div>';
-      }).join('') || '<div class="empty">Nadie cerca de las 40h esta semana</div>';
-
+        return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(h>=40?'Pasó las 40h':'Cuidado con las horas')+' · cuidar el costo</div></div><span class="badge '+(h>=40?'bad':'warn')+'">'+h+'h</span></div>';
+      }).join('');
     el.innerHTML =
-      '<h2 class="st">Hoy · ' + esc(b.fecha) + '</h2>' +
+      '<h2 class="st">Semana · '+mon.substring(5).replace('-','/')+' al '+sun.substring(5).replace('-','/')+'</h2>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Ventas hoy</div><div class="val money">'+money(vHoy)+'</div>'+chgHtml+'</div>' +
-        '<div class="card"><div class="lbl">Utilidad 7 días</div><div class="val '+(b.utilidadSemana<0?'neg':'money')+'">'+money(b.utilidadSemana)+'</div><div style="font-size:12px;color:var(--muted)">Ventas '+money(b.ventasSemana)+'</div></div>' +
+        '<div class="card"><div class="lbl">Ventas de la semana</div><div class="val money">'+money(vSem)+'</div>' +
+          '<div style="height:6px;background:#eee;border-radius:3px;margin:6px 0 4px"><div style="height:6px;width:'+Math.min(100,Math.round(avance))+'%;background:var(--teal);border-radius:3px"></div></div>' +
+          '<div style="font-size:12px;color:var(--muted)">'+avance.toFixed(1)+'% de la meta '+money(META)+' · '+invSem+' invitados · PPA '+money(ppa)+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">Hoy '+money(vHoy)+' · Ayer '+money(vAyer)+'</div></div>' +
+        '<div class="card"><div class="lbl">Resultado al momento</div><div class="val '+(resultado<0?'neg':'money')+'">'+money(resultado)+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">Margen '+margen.toFixed(1)+'% · Ventas − gastos'+(labor!=null?' − labor':'')+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">'+(labor!=null ? ('Labor '+money(labor)+(laborPct!=null?' ('+laborPct.toFixed(1)+'% de ventas)':'')) : 'Sin labor: la nómina de la semana aún no se carga al app')+'</div></div>' +
       '</div>' +
-      '<h2 class="st">Ventas · últimos 7 días</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
-      '<h2 class="st">Gastos por categoría · 7 días ('+money(gTot)+')</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Nómina pendiente</div><div class="val '+(nPend.length?'neg':'money')+'">'+money(nTot)+'</div><div style="font-size:12px;color:var(--muted)">'+nPend.length+' pago(s)</div></div>' +
-        '<div class="card"><div class="lbl">Inventario bajo</div><div class="val '+(b.inventarioBajo.length?'neg':'money')+'">'+b.inventarioBajo.length+'</div><div style="font-size:12px;color:var(--muted)">productos</div></div>' +
+        '<div class="card"><div class="lbl">Ritmo para la meta</div><div class="val">'+(falta>0?money(falta):'✓')+'</div><div style="font-size:12px;color:var(--muted)">'+(falta>0 ? ('Faltan · hay que vender '+money(porDia)+' por día en '+diasRest+' día(s)') : 'Meta de la semana alcanzada')+'</div></div>' +
+        '<div class="card"><div class="lbl">Por pagar</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pendiente(s)</div></div>' +
       '</div>' +
-      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' +
-      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Inventario bajo</h2><div class="list">'+inv+'</div>';
+      '<div class="cards">' +
+        '<div class="card"><div class="lbl">Costo de comida</div><div class="val">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Mercancía comida '+money(gCat['Mercancía Comida']||0)+' ÷ venta comida '+money(vComida)+'</div></div>' +
+        '<div class="card"><div class="lbl">Costo de licor</div><div class="val">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Mercancía licor '+money(gCat['Mercancía Licor']||0)+' ÷ venta licor '+money(vLicor)+'</div></div>' +
+      '</div>' +
+      '<h2 class="st">Ventas por día · semana</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
+      '<h2 class="st">Gastos de la semana · '+money(gTot)+'</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
+      '<h2 class="st">Por pagar · '+money(ppTot)+'</h2><div class="list" style="margin-bottom:14px">'+ppHtml+'</div>' +
+      (hAlert ? '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' : '') +
+      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Inventario bajo</h2><div class="list">'+inv+'</div>' +
+      '<p style="color:#888;font-size:12px;margin-top:10px">Semana lunes a domingo. Resultado = ventas netas − gastos registrados − labor cargada en el app. "Por pagar" = gastos marcados como invoice por pagar en la pestaña Gastos.</p>';
   } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 </script>
