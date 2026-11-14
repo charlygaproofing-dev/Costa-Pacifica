@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -141,11 +141,11 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <div class="login-wrap">
     <img src="logo-faz.png" alt="Faz Management" class="login-logo">
     <h1 style="font-size:26px;letter-spacing:3px;margin:16px 0 6px">FAZ MANAGEMENT</h1>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Costa Pacífica · CP1604 · App de operación</p>
-    <input id="pinUser" type="text" placeholder="usuario" autocomplete="username" style="letter-spacing:1px;font-size:15px;text-align:left;">
+    <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Costa Pacífica · CP1604 · Operations app</p>
+    <input id="pinUser" type="text" placeholder="username" autocomplete="username" style="letter-spacing:1px;font-size:15px;text-align:left;">
     <input id="pinCode" type="password" placeholder="••••" inputmode="numeric" autocomplete="current-password">
     <div class="err" id="loginErr"></div>
-    <button class="btn" onclick="doLogin()">Entrar</button>
+    <button class="btn" onclick="doLogin()">Sign in</button>
   </div>
 </div>
 
@@ -169,19 +169,19 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <button class="fab" id="fabBtn" onclick="openForm()">+</button>
 
   <nav class="bottom" id="bottomNav">
-    <button data-v="dash" class="on" onclick="go('dash')"><span class="ic"><svg class="nav-ic"><use href="#i-chart"/></svg></span>Panel</button>
-    <button data-v="ventas" onclick="go('ventas')"><span class="ic"><svg class="nav-ic"><use href="#i-cash"/></svg></span>Ventas</button>
+    <button data-v="dash" class="on" onclick="go('dash')"><span class="ic"><svg class="nav-ic"><use href="#i-chart"/></svg></span>Dashboard</button>
+    <button data-v="ventas" onclick="go('ventas')"><span class="ic"><svg class="nav-ic"><use href="#i-cash"/></svg></span>Sales</button>
     <button data-v="checks" onclick="go('checks')"><span class="ic"><svg class="nav-ic"><use href="#i-checksq"/></svg></span>Checks</button>
-    <button data-v="personal" onclick="go('personal')"><span class="ic"><svg class="nav-ic"><use href="#i-users"/></svg></span>Personal</button>
-    <button data-v="__menu" onclick="toggleDrawer(true)"><span class="ic" style="font-size:22px">☰</span>Menú</button>
+    <button data-v="personal" onclick="go('personal')"><span class="ic"><svg class="nav-ic"><use href="#i-users"/></svg></span>Staff</button>
+    <button data-v="__menu" onclick="toggleDrawer(true)"><span class="ic" style="font-size:22px">☰</span>Menu</button>
   </nav>
 </div>
 
 <div class="drawer-bg" id="drawerBg" onclick="toggleDrawer(false)"></div>
 <aside class="drawer" id="drawer">
-  <div class="dh"><div style="font-size:16px;font-weight:700">Costa Pacífica</div><div style="font-size:11px;opacity:.85;margin-top:2px">CP1604 · App de operación</div></div>
+  <div class="dh"><div style="font-size:16px;font-weight:700">Costa Pacífica</div><div style="font-size:11px;opacity:.85;margin-top:2px">CP1604 · Operations app</div></div>
   <div id="drawerItems" style="overflow-y:auto;flex:1"></div>
-  <div class="df">ELABORADO POR <b>FAZ MANAGEMENT</b></div>
+  <div class="df">BUILT BY <b>FAZ MANAGEMENT</b></div>
 </aside>
 
 <div class="modal-bg" id="modalBg">
@@ -212,7 +212,7 @@ async function api(action, params, isPost) {
     body: JSON.stringify(Object.assign({ action: action, token: CFG.token }, params)) });
   return r2.json();
 }
-function money(n){ n = parseFloat(n)||0; return '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function money(n){ n = parseFloat(n)||0; return '$' + n.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2}); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
@@ -226,15 +226,15 @@ async function doLogin(){
   var u = document.getElementById('pinUser').value.trim().toLowerCase();
   var p = document.getElementById('pinCode').value.trim();
   var err = document.getElementById('loginErr');
-  err.textContent = 'Verificando…';
+  err.textContent = 'Checking…';
   try {
     var d = await api('list', { tab: 'usuarios' });
-    if (!d.ok) throw new Error(d.error || 'Error de conexión');
+    if (!d.ok) throw new Error(d.error || 'Connection error');
     var h = await sha256hex(p);
     var found = (d.rows||[]).find(function(r){
       return String(r.username||'').toLowerCase()===u && String(r.pinHash)===h && String(r.activo).toLowerCase()!=='no';
     });
-    if (!found) { err.textContent = 'Usuario o PIN incorrecto'; return; }
+    if (!found) { err.textContent = 'Incorrect username or PIN'; return; }
     ME = found;
     document.getElementById('loginView').style.display='none';
     document.getElementById('appView').style.display='block';
@@ -245,15 +245,15 @@ async function doLogin(){
 
 /* ================= MENU LATERAL ================= */
 var MODS = [
-  ['dash','<svg class="dr-ic"><use href="#i-chart"/></svg>','Panel','Resumen del día'],
-  ['ventas','<svg class="dr-ic"><use href="#i-cash"/></svg>','Ventas','Día, semana, mes y trimestre'],
-  ['gastos','<svg class="dr-ic"><use href="#i-receipt"/></svg>','Gastos','Registro de gastos'],
-  ['personal','<svg class="dr-ic"><use href="#i-users"/></svg>','Personal','Staff, training y evaluaciones'],
-  ['nomina','<svg class="dr-ic"><use href="#i-wallet"/></svg>','Nómina','Pagos y tip-out'],
-  ['inventario','<svg class="dr-ic"><use href="#i-box"/></svg>','Inventario','Existencias y orden de compra'],
-  ['menu','<svg class="dr-ic"><use href="#i-utensils"/></svg>','Menú','Platillos y recetario'],
-  ['prov','<svg class="dr-ic"><use href="#i-truck"/></svg>','Proveedores','Catálogo de proveedores'],
-  ['act','<svg class="dr-ic"><use href="#i-cal"/></svg>','Actividades','Calendario 2026'],
+  ['dash','<svg class="dr-ic"><use href="#i-chart"/></svg>','Dashboard','Daily summary'],
+  ['ventas','<svg class="dr-ic"><use href="#i-cash"/></svg>','Sales','Day, week, month & quarter'],
+  ['gastos','<svg class="dr-ic"><use href="#i-receipt"/></svg>','Expenses','Expense log'],
+  ['personal','<svg class="dr-ic"><use href="#i-users"/></svg>','Staff','Staff, training & evaluations'],
+  ['nomina','<svg class="dr-ic"><use href="#i-wallet"/></svg>','Payroll','Payments & tip-out'],
+  ['inventario','<svg class="dr-ic"><use href="#i-box"/></svg>','Inventory','Stock & purchase orders'],
+  ['menu','<svg class="dr-ic"><use href="#i-utensils"/></svg>','Menu','Dishes & recipes'],
+  ['prov','<svg class="dr-ic"><use href="#i-truck"/></svg>','Vendors','Vendor catalog'],
+  ['act','<svg class="dr-ic"><use href="#i-cal"/></svg>','Activities','2026 calendar'],
   ['checks','<svg class="dr-ic"><use href="#i-checksq"/></svg>','Checks','Checklists FOH / BOH']
 ];
 function toggleDrawer(open){
@@ -289,9 +289,9 @@ async function viewReceta(id){
     .replace(/Versión (\d+):/g, '<div class="rv-ver">Versión $1</div>')
     .replace(/(Garnish|Glass|Rim):/g, '<b>$1:</b>')
     .replace(/\n/g, '<br>');
-  openModal('<h3><svg class="ic"><use href="#i-wine"/></svg> '+esc(r.platillo||'Receta')+'</h3>' +
+  openModal('<h3><svg class="ic"><use href="#i-wine"/></svg> '+esc(r.platillo||'Recipe')+'</h3>' +
     '<div class="receta-view">'+body+'</div>' +
-    '<button class="btn sec" style="margin-top:12px" onclick="closeModal()">Cerrar</button>');
+    '<button class="btn sec" style="margin-top:12px" onclick="closeModal()">Close</button>');
 }
 document.getElementById('modalBg').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
 
@@ -302,7 +302,7 @@ function sum(a){ return a.reduce(function(x,y){ return x+(parseFloat(y)||0); },0
 function pct(n){ return (parseFloat(n)||0).toFixed(1)+'%'; }
 async function rDash(){
   var el = document.getElementById('v-dash');
-  el.innerHTML = '<div class="empty">Cargando…</div>';
+  el.innerHTML = '<div class="empty">Loading…</div>';
   try {
     var res = await Promise.all([
       api('dashboard', {}),
@@ -321,7 +321,7 @@ async function rDash(){
     /* ---- Ventas de la semana ---- */
     var vSem=0, vComida=0, vLicor=0, invSem=0, vHoy=0, vAyer=0;
     var dias = [];
-    for (var i=0;i<7;i++){ var dt = new Date(monD.getTime()+i*864e5); dias.push({ f: dStr(dt), dw: 'L M M J V S D'[i*2]||'', v: 0 }); }
+    for (var i=0;i<7;i++){ var dt = new Date(monD.getTime()+i*864e5); dias.push({ f: dStr(dt), dw: 'M T W T F S S'[i*2]||'', v: 0 }); }
     ventas.forEach(function(r){
       var f = String(r.fecha||'').substring(0,10), t = vTotal(r);
       if (f===hoy) vHoy += t;
@@ -354,9 +354,9 @@ async function rDash(){
       var pt = gTot>0 ? Math.round(gCat[c]/gTot*100) : 0;
       return '<div class="row-item"><div><div class="t">'+esc(c)+'</div><div style="height:6px;background:#eee;border-radius:3px;margin-top:4px;width:140px"><div style="height:6px;width:'+pt+'%;background:var(--teal);border-radius:3px"></div></div></div><div style="text-align:right"><div class="amt">'+money(gCat[c])+'</div><div class="s">'+ps.toFixed(1)+'% de ventas</div></div></div>';
     }).join('') || '<div class="empty">Sin gastos esta semana</div>';
-    var costoComida = vComida>0 ? (gCat['Mercancía Comida']||0)/vComida*100 : null;
-    var costoLicor = vLicor>0 ? (gCat['Mercancía Licor']||0)/vLicor*100 : null;
-    /* ---- Labor (nómina cargada en el app) ---- */
+    var costoComida = vComida>0 ? (gCat['Food Merchandise']||0)/vComida*100 : null;
+    var costoLicor = vLicor>0 ? (gCat['Liquor Merchandise']||0)/vLicor*100 : null;
+    /* ---- Labor (payroll loaded in the app) ---- */
     var nomSem = nom.filter(function(r){ var f=String(r.periodoInicio||'').substring(0,10); return enSem(f); });
     var labor = nomSem.length ? nomSem.reduce(function(a,r){return a+(parseFloat(r.neto)||0);},0) : null;
     var laborPct = (labor!=null && vSem>0) ? labor/vSem*100 : null;
@@ -376,21 +376,21 @@ async function rDash(){
     porPagar.sort(function(a,b2){ return (a.vence||'9999') < (b2.vence||'9999') ? -1 : 1; });
     var ppTot = porPagar.reduce(function(a,r){return a+r.monto;},0);
     var ppHtml = porPagar.map(function(r){
-      var venc = r.vence ? ('Vence '+r.vence.substring(5).replace('-','/')+'/'+r.vence.substring(0,4)) : 'Sin fecha de vencimiento';
+      var venc = r.vence ? ('Due '+r.vence.substring(5).replace('-','/')+'/'+r.vence.substring(0,4)) : 'No due date';
       var tarde = r.vence && r.vence<hoy;
       return '<div class="row-item"><div><div class="t">'+esc(r.prov)+'</div><div class="s">'+esc(r.desc)+' · '+venc+'</div></div><span class="amt"'+(tarde?' style="color:var(--red)"':'')+'>'+money(r.monto)+'</span></div>';
-    }).join('') || '<div class="empty">Nada por pagar</div>';
+    }).join('') || '<div class="empty">Nothing pending</div>';
     /* ---- Inventario bajo / horas ---- */
     var inv = (b.inventarioBajo||[]).map(function(r){
-      return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Mínimo: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
-    }).join('') || '<div class="empty">Todo en niveles normales</div>';
+      return '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Par: '+esc(r.minimo)+'</div></div><span class="badge bad">'+esc(r.existencia)+'</span></div>';
+    }).join('') || '<div class="empty">All at normal levels</div>';
     var hrs = {};
     nomSem.forEach(function(r){ var id=r.personalId||'?'; hrs[id]=(hrs[id]||0)+(parseFloat(r.horas)||0); });
     var hAlert = Object.keys(hrs).filter(function(id){ return hrs[id]>=35; })
       .sort(function(a,b2){return hrs[b2]-hrs[a];})
       .map(function(id){
         var h = Math.round(hrs[id]*10)/10;
-        return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(h>=40?'Pasó las 40h':'Cuidado con las horas')+' · cuidar el costo</div></div><span class="badge '+(h>=40?'bad':'warn')+'">'+h+'h</span></div>';
+        return '<div class="row-item"><div><div class="t">'+esc(id)+'</div><div class="s">'+(h>=40?'Over 40h':'Watch the hours')+' · watch labor cost</div></div><span class="badge '+(h>=40?'bad':'warn')+'">'+h+'h</span></div>';
       }).join('');
     /* ---- Plan de la semana (forecast) ---- */
     var KPI = { comida: 28, licor: 21, labor: 28 };
@@ -404,240 +404,240 @@ async function rDash(){
     var semProm = wdAvg.reduce(function(a,b2){return a+b2;},0);
     var pesos = wdAvg.map(function(a){ return semProm>0? a/semProm : 1/7; });
     var shareCom = histTot>0? histCom/histTot : 0, shareLic = histTot>0? histLic/histTot : 0;
-    var diasSem = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    var diasSem = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     var pesoRest = 0; dias.forEach(function(x,i){ if (x.f>=hoy) pesoRest += pesos[i]; });
     var planHtml = dias.map(function(x,i){
       var metaD = META*pesos[i], pronD = semProm*pesos[i];
       var necD = (x.f>=hoy && falta>0 && pesoRest>0) ? falta*(pesos[i]/pesoRest) : 0;
-      var real = x.f<hoy ? money(x.v) : (x.f===hoy ? money(x.v)+' (hoy)' : '—');
-      var s = 'Meta '+money(metaD)+' · Pronóstico '+money(pronD)+(necD>0?' · Necesaria '+money(necD):'');
+      var real = x.f<hoy ? money(x.v) : (x.f===hoy ? money(x.v)+' (today)' : '—');
+      var s = 'Goal '+money(metaD)+' · Forecast '+money(pronD)+(necD>0?' · Needed '+money(necD):'');
       return '<div class="row-item"><div><div class="t">'+diasSem[i]+' '+x.f.substring(5).replace('-','/')+'</div><div class="s">'+s+'</div></div><div class="amt">'+real+'</div></div>';
     }).join('');
     function presRow(nombre, gastado, permitido, totalSem){
-      if (gastado==null) return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Sin datos cargados esta semana · presupuesto total '+money(totalSem)+'</div></div><span class="badge warn">sin datos</span></div>';
+      if (gastado==null) return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">No data loaded this week · full-week budget '+money(totalSem)+'</div></div><span class="badge warn">no data</span></div>';
       var diff = gastado - permitido;
       var ok = diff<=0;
-      return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Gastado '+money(gastado)+' · permitido al día '+money(permitido)+' · total semana '+money(totalSem)+'</div></div><span class="badge '+(ok?'':'bad')+'">'+(ok?'dentro':'pasado '+money(diff))+'</span></div>';
+      return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Spent '+money(gastado)+' · allowed to date '+money(permitido)+' · full week '+money(totalSem)+'</div></div><span class="badge '+(ok?'':'bad')+'">'+(ok?'on track':'over by '+money(diff))+'</span></div>';
     }
     var presHtml =
-      presRow('Comida · 28%', gCat['Mercancía Comida']||0, KPI.comida/100*vComida, KPI.comida/100*semProm*shareCom) +
-      presRow('Licor · 21%', gCat['Mercancía Licor']||0, KPI.licor/100*vLicor, KPI.licor/100*semProm*shareLic) +
+      presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*vComida, KPI.comida/100*semProm*shareCom) +
+      presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*vLicor, KPI.licor/100*semProm*shareLic) +
       presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*semProm);
     el.innerHTML =
-      '<h2 class="st">Semana · '+mon.substring(5).replace('-','/')+' al '+sun.substring(5).replace('-','/')+'</h2>' +
+      '<h2 class="st">Week · '+mon.substring(5).replace('-','/')+' to '+sun.substring(5).replace('-','/')+'</h2>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Ventas de la semana</div><div class="val money">'+money(vSem)+'</div>' +
+        '<div class="card"><div class="lbl">Sales this week</div><div class="val money">'+money(vSem)+'</div>' +
           '<div style="height:6px;background:#eee;border-radius:3px;margin:6px 0 4px"><div style="height:6px;width:'+Math.min(100,Math.round(avance))+'%;background:var(--teal);border-radius:3px"></div></div>' +
-          '<div style="font-size:12px;color:var(--muted)">'+avance.toFixed(1)+'% de la meta '+money(META)+' · '+invSem+' invitados · PPA '+money(ppa)+'</div>' +
-          '<div style="font-size:12px;color:var(--muted)">Hoy '+money(vHoy)+' · Ayer '+money(vAyer)+'</div></div>' +
-        '<div class="card"><div class="lbl">Resultado al momento</div><div class="val '+(resultado<0?'neg':'money')+'">'+money(resultado)+'</div>' +
-          '<div style="font-size:12px;color:var(--muted)">Margen '+margen.toFixed(1)+'% · Ventas − gastos'+(labor!=null?' − labor':'')+'</div>' +
-          '<div style="font-size:12px;color:var(--muted)">'+(labor!=null ? ('Labor '+money(labor)+(laborPct!=null?' ('+laborPct.toFixed(1)+'% de ventas)':'')) : 'Sin labor: la nómina de la semana aún no se carga al app')+'</div></div>' +
+          '<div style="font-size:12px;color:var(--muted)">'+avance.toFixed(1)+'% of goal '+money(META)+' · '+invSem+' guests · PPA '+money(ppa)+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">Today '+money(vHoy)+' · Yesterday '+money(vAyer)+'</div></div>' +
+        '<div class="card"><div class="lbl">Result so far</div><div class="val '+(resultado<0?'neg':'money')+'">'+money(resultado)+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">Margin '+margen.toFixed(1)+'% · Sales − expenses'+(labor!=null?' − labor':'')+'</div>' +
+          '<div style="font-size:12px;color:var(--muted)">'+(labor!=null ? ('Labor '+money(labor)+(laborPct!=null?' ('+laborPct.toFixed(1)+'% de ventas)':'')) : 'No labor yet: this week\'s payroll has not been loaded to the app')+'</div></div>' +
       '</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Ritmo para la meta</div><div class="val">'+(falta>0?money(falta):'✓')+'</div><div style="font-size:12px;color:var(--muted)">'+(falta>0 ? ('Faltan · hay que vender '+money(porDia)+' por día en '+diasRest+' día(s)') : 'Meta de la semana alcanzada')+'</div></div>' +
-        '<div class="card"><div class="lbl">Por pagar</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pendiente(s)</div></div>' +
+        '<div class="card"><div class="lbl">Pace to goal</div><div class="val">'+(falta>0?money(falta):'✓')+'</div><div style="font-size:12px;color:var(--muted)">'+(falta>0 ? ('To go · sell '+money(porDia)+' per day over '+diasRest+' day(s)') : 'Weekly goal reached')+'</div></div>' +
+        '<div class="card"><div class="lbl">Accounts payable</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pending</div></div>' +
       '</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Costo de comida</div><div class="val '+((costoComida!=null&&costoComida>28)?'neg':'')+'">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Meta 28% · Mercancía comida '+money(gCat['Mercancía Comida']||0)+' ÷ venta comida '+money(vComida)+'</div></div>' +
-        '<div class="card"><div class="lbl">Costo de licor</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Meta 21% · Mercancía licor '+money(gCat['Mercancía Licor']||0)+' ÷ venta licor '+money(vLicor)+'</div></div>' +
+        '<div class="card"><div class="lbl">Food cost</div><div class="val '+((costoComida!=null&&costoComida>28)?'neg':'')+'">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 28% · Food purchases '+money(gCat['Food Merchandise']||0)+' ÷ food sales '+money(vComida)+'</div></div>' +
+        '<div class="card"><div class="lbl">Liquor cost</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 21% · Liquor purchases '+money(gCat['Liquor Merchandise']||0)+' ÷ liquor sales '+money(vLicor)+'</div></div>' +
       '</div>' +
-      '<h2 class="st">Ventas por día · semana</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
-      '<h2 class="st">Plan de la semana · pronóstico '+money(semProm)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
-      '<h2 class="st">Presupuesto de gasto acumulado</h2><div class="list" style="margin-bottom:14px">'+presHtml+'</div>' +
-      '<h2 class="st">Gastos de la semana · '+money(gTot)+'</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
-      '<h2 class="st">Por pagar · '+money(ppTot)+'</h2><div class="list" style="margin-bottom:14px">'+ppHtml+'</div>' +
-      (hAlert ? '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Horas esta semana · cuidar el costo</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' : '') +
-      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Inventario bajo</h2><div class="list">'+inv+'</div>' +
-      '<p style="color:#888;font-size:12px;margin-top:10px">Semana lunes a domingo. Resultado = ventas netas − gastos registrados − labor cargada en el app. "Por pagar" = gastos marcados como invoice por pagar en la pestaña Gastos.</p>';
+      '<h2 class="st">Daily sales · week</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
+      '<h2 class="st">Weekly plan · forecast '+money(semProm)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
+      '<h2 class="st">Spending budget to date</h2><div class="list" style="margin-bottom:14px">'+presHtml+'</div>' +
+      '<h2 class="st">Expenses this week · '+money(gTot)+'</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
+      '<h2 class="st">Accounts payable · '+money(ppTot)+'</h2><div class="list" style="margin-bottom:14px">'+ppHtml+'</div>' +
+      (hAlert ? '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Hours this week · watch labor cost</h2><div class="list" style="margin-bottom:14px">'+hAlert+'</div>' : '') +
+      '<h2 class="st"><svg class="ic"><use href="#i-alert"/></svg> Low inventory</h2><div class="list">'+inv+'</div>' +
+      '<p style="color:#888;font-size:12px;margin-top:10px">Week runs Monday to Sunday. Result = net sales − recorded expenses − labor loaded in the app. "Accounts payable" = expenses flagged as unpaid invoices in the Expenses tab.</p>';
   } catch(e){ el.innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 </script>
 <script>
 /* ================= TAB DEFINITIONS ================= */
-var CATS_GASTO = ['Mercancía Comida','Mercancía Licor','Nómina','Renta','Servicios','Desechables','Equipo','Limpieza','Marketing','Música y Entretenimiento','Reparaciones','Otros'];
-var CATS_INV = ['Lacteos','Marisco y Pescado','Carnes','Abarrotes','Desechables y Papel','Frutas y Verduras','Endulzantes','Bebidas','Commisary','Quimicos','Supplies y Equipo','Ron','Tequila','Vodka','Bourbon','Whiskey','Scotch','Ginebra','Mezcal','Cognac','Licores','Cerveza','Vino','Bebidas sin alcohol'];
-var CATS_MENU = ['Para Compartir','Entradas','Ceviches y Cocteles','Enchiladas y Empanadas','Tacos','Tostadas','Sopas y Ensaladas','Especialidades','Postres','Niños','Complementos','Cocteles','Shots','Vinos','Cervezas'];
-var PUESTOS = ['Cocina','Mesero','Bar','Host','Busser','Runner','Gerente','Cajero','Limpieza'];
+var CATS_GASTO = ['Food Merchandise','Liquor Merchandise','Payroll','Rent','Services','Disposables','Equipment','Cleaning','Marketing','Music & Entertainment','Repairs','Other'];
+var CATS_INV = ['Dairy','Seafood','Meats','Groceries','Disposables & Paper','Fruits & Vegetables','Sweeteners','Beverages','Commissary','Chemicals','Supplies & Equipment','Rum','Tequila','Vodka','Bourbon','Whiskey','Scotch','Gin','Mezcal','Cognac','Liquors','Beer','Wine','Non-alcoholic Beverages'];
+var CATS_MENU = ['To Share','Starters','Ceviches & Cocktails','Enchiladas y Empanadas','Tacos','Tostadas','Soups & Salads','Specialties','Desserts','Kids','Sides','Cocktails','Shots','Wines','Beers'];
+var PUESTOS = ['Kitchen','Server','Bar','Host','Busser','Runner','Manager','Cashier','Cleaning'];
 
 var TABDEF = {
-  ventas: { tab:'ventas', title:'Ventas', singular:'venta',
+  ventas: { tab:'ventas', title:'Sales', singular:'sale',
     fields:[
-      {k:'fecha',l:'Fecha',t:'date',req:1},
-      {k:'ventaComida',l:'Ventas comida $',t:'number'},
-      {k:'ventaLicor',l:'Ventas licor $',t:'number'},
-      {k:'comedor',l:'Comedor $',t:'number'},
-      {k:'paraLlevar',l:'Para llevar $',t:'number'},
+      {k:'fecha',l:'Date',t:'date',req:1},
+      {k:'ventaComida',l:'Food sales $',t:'number'},
+      {k:'ventaLicor',l:'Liquor sales $',t:'number'},
+      {k:'comedor',l:'Dine-in $',t:'number'},
+      {k:'paraLlevar',l:'Takeout $',t:'number'},
       {k:'delivery',l:'Delivery $',t:'number'},
-      {k:'invitados',l:'Invitados',t:'number'},
-      {k:'desayuno',l:'Desayuno $',t:'number'},
-      {k:'comida',l:'Comida $',t:'number'},
-      {k:'cena',l:'Cena $',t:'number'},
-      {k:'noche',l:'Noche (late night) $',t:'number'},
-      {k:'propinas',l:'Propinas $',t:'number'},
-      {k:'impuestos',l:'Impuestos $',t:'number'},
-      {k:'gratificacion',l:'Gratificación $',t:'number'},
-      {k:'descuentos',l:'Descuentos y cortesías $',t:'number'},
+      {k:'invitados',l:'Guests',t:'number'},
+      {k:'desayuno',l:'Breakfast $',t:'number'},
+      {k:'comida',l:'Lunch $',t:'number'},
+      {k:'cena',l:'Dinner $',t:'number'},
+      {k:'noche',l:'Late night $',t:'number'},
+      {k:'propinas',l:'Tips $',t:'number'},
+      {k:'impuestos',l:'Taxes $',t:'number'},
+      {k:'gratificacion',l:'Gratuity $',t:'number'},
+      {k:'descuentos',l:'Discounts & comps $',t:'number'},
       {k:'voids',l:'Voids $',t:'number'},
-      {k:'efectivo',l:'Efectivo $',t:'number'},
-      {k:'tarjeta',l:'Tarjeta $',t:'number'},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'efectivo',l:'Cash $',t:'number'},
+      {k:'tarjeta',l:'Card $',t:'number'},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ var t=vTotal(r); var inv=parseFloat(r.invitados)||0;
-      return {t:'Venta · '+esc(r.fecha||''), s:'Comida '+money(r.ventaComida)+' · Licor '+money(r.ventaLicor)+(inv>0?' · '+inv+' invitados · PPA '+money(t/inv):''), amt:money(t)}; } },
-  gastos: { tab:'gastos', title:'Gastos', singular:'gasto',
+      return {t:'Sale · '+esc(r.fecha||''), s:'Food '+money(r.ventaComida)+' · Liquor '+money(r.ventaLicor)+(inv>0?' · '+inv+' guests · PPA '+money(t/inv):''), amt:money(t)}; } },
+  gastos: { tab:'gastos', title:'Expenses', singular:'expense',
     fields:[
-      {k:'fecha',l:'Fecha',t:'date',req:1},
-      {k:'categoria',l:'Categoría',t:'select',opts:CATS_GASTO,req:1},
-      {k:'proveedor',l:'Proveedor',t:'text'},
-      {k:'descripcion',l:'Descripción',t:'text',req:1},
-      {k:'monto',l:'Monto $',t:'number',req:1},
-      {k:'metodoPago',l:'Método de pago',t:'select',opts:['Efectivo','Tarjeta','Transferencia','Cheque']},
-      {k:'recibo',l:'Foto o PDF del ticket',t:'foto'},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'fecha',l:'Date',t:'date',req:1},
+      {k:'categoria',l:'Category',t:'select',opts:CATS_GASTO,req:1},
+      {k:'proveedor',l:'Vendor',t:'text'},
+      {k:'descripcion',l:'Description',t:'text',req:1},
+      {k:'monto',l:'Amount $',t:'number',req:1},
+      {k:'metodoPago',l:'Payment method',t:'select',opts:['Cash','Card','Transfer','Check']},
+      {k:'recibo',l:'Ticket photo or PDF',t:'foto'},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ return {t:esc(r.descripcion||''), s:esc(r.fecha||'')+' · '+esc(r.categoria||'')+(r.proveedor?' · '+esc(r.proveedor):''), amt:money(r.monto), badge:esc(r.categoria||'')}; } },
-  personal: { tab:'personal', title:'Personal', singular:'empleado',
+  personal: { tab:'personal', title:'Staff', singular:'employee',
     fields:[
-      {k:'nombre',l:'Nombre',t:'text',req:1},
-      {k:'puesto',l:'Puesto',t:'select',opts:PUESTOS,req:1},
-      {k:'sueldoBase',l:'Sueldo base $',t:'number'},
-      {k:'tipoSueldo',l:'Tipo',t:'select',opts:['Hora','Semana','Quincena']},
-      {k:'telefono',l:'Teléfono',t:'text'},
-      {k:'fechaIngreso',l:'Fecha de ingreso',t:'date'},
-      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'nombre',l:'Name',t:'text',req:1},
+      {k:'puesto',l:'Position',t:'select',opts:PUESTOS,req:1},
+      {k:'sueldoBase',l:'Base pay $',t:'number'},
+      {k:'tipoSueldo',l:'Pay type',t:'select',opts:['Hour','Week','Biweekly']},
+      {k:'telefono',l:'Phone',t:'text'},
+      {k:'fechaIngreso',l:'Start date',t:'date'},
+      {k:'activo',l:'Active',t:'select',opts:['Yes','No']},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ var off = String(r.activo).toLowerCase()==='no';
-      return {t:esc(r.nombre||''), s:esc(r.puesto||'')+' · '+money(r.sueldoBase)+' / '+esc(r.tipoSueldo||''), badge: off?'<span class="badge bad">Inactivo</span>':esc(r.puesto||'')}; } },
-  training: { tab:'training', title:'Programas de training', singular:'programa',
+      return {t:esc(r.nombre||''), s:esc(r.puesto||'')+' · '+money(r.sueldoBase)+' / '+esc(r.tipoSueldo||''), badge: off?'<span class="badge bad">Inactive</span>':esc(r.puesto||'')}; } },
+  training: { tab:'training', title:'Training programs', singular:'program',
     fields:[
-      {k:'puesto',l:'Puesto',t:'select',opts:PUESTOS,req:1},
-      {k:'titulo',l:'Título',t:'text',req:1},
-      {k:'duracion',l:'Duración',t:'text'},
-      {k:'descripcion',l:'Descripción',t:'text'},
-      {k:'documento',l:'Documento (URL)',t:'text'}
+      {k:'puesto',l:'Position',t:'select',opts:PUESTOS,req:1},
+      {k:'titulo',l:'Title',t:'text',req:1},
+      {k:'duracion',l:'Duration',t:'text'},
+      {k:'descripcion',l:'Description',t:'text'},
+      {k:'documento',l:'Document (URL)',t:'text'}
     ],
     row:function(r){ return {t:esc(r.titulo||''), s:esc(r.puesto||'')+' · '+esc(r.duracion||''), badge:''}; } },
-  training_progreso: { tab:'training_progreso', title:'Progreso de training', singular:'registro',
+  training_progreso: { tab:'training_progreso', title:'Training progress', singular:'record',
     fields:[
-      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
-      {k:'trainingId',l:'Programa (ID)',t:'text',req:1},
-      {k:'fechaInicio',l:'Fecha de inicio',t:'date',req:1},
-      {k:'fechaFin',l:'Fecha de fin',t:'date'},
-      {k:'estado',l:'Estado',t:'select',opts:['En curso','Certificado','Certificado condicional','No certificado']},
-      {k:'entrenador',l:'Entrenador',t:'text'},
-      {k:'evaluacion',l:'Evaluación (1-5)',t:'number'},
-      {k:'comentarios',l:'Comentarios',t:'text'}
+      {k:'personalId',l:'Employee (ID)',t:'text',req:1},
+      {k:'trainingId',l:'Program (ID)',t:'text',req:1},
+      {k:'fechaInicio',l:'Start date',t:'date',req:1},
+      {k:'fechaFin',l:'End date',t:'date'},
+      {k:'estado',l:'Status',t:'select',opts:['In progress','Certified','Conditional certification','Not certified']},
+      {k:'entrenador',l:'Trainer',t:'text'},
+      {k:'evaluacion',l:'Evaluation (1-5)',t:'number'},
+      {k:'comentarios',l:'Comments',t:'text'}
     ],
     row:function(r){ var st=String(r.estado||'');
-      var b = st==='Certificado'?'<span class="badge">Certificado</span>':st==='En curso'?'<span class="badge warn">En curso</span>':st?'<span class="badge bad">'+esc(st)+'</span>':'';
-      return {t:esc(r.personalId||'')+' · '+esc(r.trainingId||''), s:'Inicio '+esc(r.fechaInicio||'')+(r.evaluacion?' · Eval '+esc(r.evaluacion)+'/5':''), badge:b}; } },
-  evaluaciones: { tab:'evaluaciones', title:'Evaluaciones del staff', singular:'evaluación',
+      var b = st==='Certified'?'<span class="badge">Certified</span>':st==='In progress'?'<span class="badge warn">In progress</span>':st?'<span class="badge bad">'+esc(st)+'</span>':'';
+      return {t:esc(r.personalId||'')+' · '+esc(r.trainingId||''), s:'Start '+esc(r.fechaInicio||'')+(r.evaluacion?' · Eval '+esc(r.evaluacion)+'/5':''), badge:b}; } },
+  evaluaciones: { tab:'evaluaciones', title:'Staff evaluations', singular:'evaluation',
     fields:[
-      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
-      {k:'fecha',l:'Fecha',t:'date',req:1},
-      {k:'tipo',l:'Tipo',t:'select',opts:['Desempeño','Entrenamiento']},
-      {k:'evaluador',l:'Evaluador',t:'text'},
-      {k:'actitud',l:'Actitud y energía (1-5)',t:'number'},
-      {k:'conocimiento',l:'Conocimiento (1-5)',t:'number'},
-      {k:'ejecucion',l:'Ejecución (1-5)',t:'number'},
-      {k:'equipo',l:'Trabajo en equipo (1-5)',t:'number'},
-      {k:'comunicacion',l:'Comunicación (1-5)',t:'number'},
-      {k:'promedio',l:'Promedio (auto)',t:'number'},
-      {k:'fortalezas',l:'Fortalezas',t:'text'},
-      {k:'areasMejora',l:'Áreas a mejorar',t:'text'},
-      {k:'comentarios',l:'Comentarios',t:'text'}
+      {k:'personalId',l:'Employee (ID)',t:'text',req:1},
+      {k:'fecha',l:'Date',t:'date',req:1},
+      {k:'tipo',l:'Type',t:'select',opts:['Performance','Training']},
+      {k:'evaluador',l:'Evaluator',t:'text'},
+      {k:'actitud',l:'Attitude & energy (1-5)',t:'number'},
+      {k:'conocimiento',l:'Knowledge (1-5)',t:'number'},
+      {k:'ejecucion',l:'Execution (1-5)',t:'number'},
+      {k:'equipo',l:'Teamwork (1-5)',t:'number'},
+      {k:'comunicacion',l:'Communication (1-5)',t:'number'},
+      {k:'promedio',l:'Average (auto)',t:'number'},
+      {k:'fortalezas',l:'Strengths',t:'text'},
+      {k:'areasMejora',l:'Areas to improve',t:'text'},
+      {k:'comentarios',l:'Comments',t:'text'}
     ],
     row:function(r){ var p=parseFloat(r.promedio)||0;
       var b = p>=4?'<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg> '+p.toFixed(1)+'</span>':p>0?'<span class="badge warn">'+p.toFixed(1)+'</span>':'';
       return {t:esc(r.personalId||'')+' · '+esc(r.fecha||''), s:esc(r.tipo||'')+' · '+esc(r.evaluador||''), badge:b}; } },
-  puestos: { tab:'puestos', title:'Puestos y responsabilidades', singular:'puesto',
+  puestos: { tab:'puestos', title:'Positions & responsibilities', singular:'position',
     fields:[
-      {k:'puesto',l:'Puesto',t:'text',req:1},
-      {k:'area',l:'Área',t:'select',opts:['Dirección','Liderazgo','FOH','Bar','Cocina','Soporte']},
-      {k:'reportaA',l:'Reporta a',t:'text'},
-      {k:'responsabilidades',l:'Responsabilidades',t:'text'}
+      {k:'puesto',l:'Position',t:'text',req:1},
+      {k:'area',l:'Area',t:'select',opts:['Management','Leadership','FOH','Bar','Kitchen','Support']},
+      {k:'reportaA',l:'Reports to',t:'text'},
+      {k:'responsabilidades',l:'Responsibilities',t:'text'}
     ],
-    row:function(r){ return {t:esc(r.puesto||''), s:(r.reportaA?'Reporta a: '+esc(r.reportaA)+' · ':'')+esc(r.responsabilidades||''), badge:r.area?'<span class="badge">'+esc(r.area)+'</span>':''}; } },
-  checklists: { tab:'checklists', title:'Tareas de checklist', singular:'tarea',
+    row:function(r){ return {t:esc(r.puesto||''), s:(r.reportaA?'Reports to: '+esc(r.reportaA)+' · ':'')+esc(r.responsabilidades||''), badge:r.area?'<span class="badge">'+esc(r.area)+'</span>':''}; } },
+  checklists: { tab:'checklists', title:'Checklist tasks', singular:'task',
     fields:[
-      {k:'area',l:'Área',t:'select',opts:['FOH','BOH'],req:1},
-      {k:'momento',l:'Momento',t:'select',opts:['Apertura','Cierre'],req:1},
-      {k:'tarea',l:'Tarea',t:'text',req:1},
-      {k:'orden',l:'Orden',t:'number'},
-      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']}
+      {k:'area',l:'Area',t:'select',opts:['FOH','BOH'],req:1},
+      {k:'momento',l:'Shift',t:'select',opts:['Opening','Closing'],req:1},
+      {k:'tarea',l:'Task',t:'text',req:1},
+      {k:'orden',l:'Order',t:'number'},
+      {k:'activo',l:'Active',t:'select',opts:['Yes','No']}
     ],
     row:function(r){ return {t:esc(r.tarea||''), s:esc(r.area||'')+' · '+esc(r.momento||'')+' · #'+esc(r.orden||''), badge:''}; } },
-  nomina: { tab:'nomina', title:'Nómina', singular:'pago de nómina',
+  nomina: { tab:'nomina', title:'Payroll', singular:'payroll payment',
     fields:[
-      {k:'personalId',l:'Empleado (ID)',t:'text',req:1},
-      {k:'periodoInicio',l:'Periodo inicio',t:'date',req:1},
-      {k:'periodoFin',l:'Periodo fin',t:'date',req:1},
-      {k:'horas',l:'Horas',t:'number'},
-      {k:'ventasBrutas',l:'Ventas brutas $',t:'number'},
-      {k:'propinasDeclaradas',l:'Propinas declaradas $',t:'number'},
-      {k:'sueldoBruto',l:'Sueldo bruto $',t:'number'},
-      {k:'propinas',l:'Propinas netas $ (auto: declaradas − 4%)',t:'number'},
-      {k:'deducciones',l:'Deducciones $',t:'number'},
-      {k:'neto',l:'Neto $',t:'number'},
-      {k:'pagado',l:'Pagado',t:'select',opts:['Sí','No']},
-      {k:'fechaPago',l:'Fecha de pago',t:'date'}
+      {k:'personalId',l:'Employee (ID)',t:'text',req:1},
+      {k:'periodoInicio',l:'Period start',t:'date',req:1},
+      {k:'periodoFin',l:'Period end',t:'date',req:1},
+      {k:'horas',l:'Hours',t:'number'},
+      {k:'ventasBrutas',l:'Gross sales $',t:'number'},
+      {k:'propinasDeclaradas',l:'Declared tips $',t:'number'},
+      {k:'sueldoBruto',l:'Gross pay $',t:'number'},
+      {k:'propinas',l:'Net tips $ (auto: declared − 4%)',t:'number'},
+      {k:'deducciones',l:'Deductions $',t:'number'},
+      {k:'neto',l:'Net $',t:'number'},
+      {k:'pagado',l:'Paid',t:'select',opts:['Yes','No']},
+      {k:'fechaPago',l:'Pay date',t:'date'}
     ],
-    row:function(r){ var paid = String(r.pagado).toLowerCase()==='sí'||String(r.pagado).toLowerCase()==='si';
+    row:function(r){ var paid = String(r.pagado).toLowerCase()==='yes';
       var vb = parseFloat(r.ventasBrutas)||0;
       var tip = vb>0 ? ' · Tip-out 4%: '+money(vb*0.04) : '';
-      return {t:esc(r.personalId||'')+' · '+esc(r.periodoInicio||'')+' al '+esc(r.periodoFin||''), s:'Neto '+money(r.neto)+tip, amt:money(r.neto), badge: paid?'<span class="badge">Pagado</span>':'<span class="badge warn">Pendiente</span>'}; } },
-  inventario: { tab:'inventario', title:'Inventario', singular:'producto',
+      return {t:esc(r.personalId||'')+' · '+esc(r.periodoInicio||'')+' al '+esc(r.periodoFin||''), s:'Net '+money(r.neto)+tip, amt:money(r.neto), badge: paid?'<span class="badge">Paid</span>':'<span class="badge warn">Pending</span>'}; } },
+  inventario: { tab:'inventario', title:'Inventory', singular:'product',
     fields:[
-      {k:'producto',l:'Producto',t:'text',req:1},
+      {k:'producto',l:'Product',t:'text',req:1},
       {k:'categoria',l:'Categoría',t:'select',opts:CATS_INV,req:1},
-      {k:'unidad',l:'Unidad',t:'select',opts:['Pza','Kg','Lt','Caja','Bulto','Galón']},
-      {k:'existencia',l:'Existencia actual',t:'number'},
-      {k:'minimo',l:'Par (mínimo)',t:'number'},
-      {k:'maximo',l:'Máximo (llenar hasta)',t:'number'},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'unidad',l:'Unit',t:'select',opts:['Piece','Kg','Lt','Box','Bundle','Gal']},
+      {k:'existencia',l:'On hand',t:'number'},
+      {k:'minimo',l:'Par (minimum)',t:'number'},
+      {k:'maximo',l:'Max (fill up to)',t:'number'},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ var low = r.minimo!=='' && (parseFloat(r.existencia)||0) <= (parseFloat(r.minimo)||0);
-      return {t:esc(r.producto||''), s:esc(r.categoria||'')+' · '+esc(r.unidad||'')+' · Par: '+esc(r.minimo||'—'), amt:String(r.existencia||'0'), badge: low?'<span class="badge bad">Pedir</span>':''}; } },
-  menu: { tab:'menu', title:'Menú', singular:'platillo',
+      return {t:esc(r.producto||''), s:esc(r.categoria||'')+' · '+esc(r.unidad||'')+' · Par: '+esc(r.minimo||'—'), amt:String(r.existencia||'0'), badge: low?'<span class="badge bad">Order</span>':''}; } },
+  menu: { tab:'menu', title:'Menu', singular:'dish',
     fields:[
-      {k:'platillo',l:'Platillo',t:'text',req:1},
-      {k:'tipo',l:'Tipo',t:'select',opts:['Comida','Barra'],req:1},
+      {k:'platillo',l:'Dish',t:'text',req:1},
+      {k:'tipo',l:'Type',t:'select',opts:['Food','Bar'],req:1},
       {k:'categoria',l:'Categoría',t:'select',opts:CATS_MENU,req:1},
-      {k:'precio',l:'Precio $',t:'number',req:1},
-      {k:'costoIngredientes',l:'Costo ingredientes $',t:'number'},
-      {k:'receta',l:'Receta (ingredientes y preparación)',t:'textarea'},
-      {k:'imagen',l:'URL de imagen',t:'text'},
-      {k:'activo',l:'Activo',t:'select',opts:['Sí','No']},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'precio',l:'Price $',t:'number',req:1},
+      {k:'costoIngredientes',l:'Ingredient cost $',t:'number'},
+      {k:'receta',l:'Recipe (ingredients & preparation)',t:'textarea'},
+      {k:'imagen',l:'Image URL',t:'text'},
+      {k:'activo',l:'Active',t:'select',opts:['Yes','No']},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ var p=parseFloat(r.precio)||0, c=parseFloat(r.costoIngredientes)||0;
       var m = p>0 ? Math.round((p-c)/p*100) : 0;
-      var tb = r.tipo==='Barra' ? '<svg class="ic"><use href="#i-wine"/></svg> ' : '';
+      var tb = r.tipo==='Bar' ? '<svg class="ic"><use href="#i-wine"/></svg> ' : '';
       var img = r.imagen ? '<img src="'+esc(r.imagen)+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;margin-right:8px">' : '';
-      var rec = r.receta ? ' · <span class="rec-link" onclick="event.stopPropagation();viewReceta(\''+esc(r.id||'')+'\')"><svg class="ic"><use href="#i-note"/></svg> ver receta</span>' : '';
-      return {t:'<div style="display:flex;align-items:center">'+img+'<span>'+tb+esc(r.platillo||'')+'</span></div>', s:esc(r.categoria||'')+' · Costo '+money(c)+' · Margen '+m+'%'+rec, amt:money(p)}; } },
-  prov: { tab:'proveedores', title:'Proveedores', singular:'proveedor',
+      var rec = r.receta ? ' · <span class="rec-link" onclick="event.stopPropagation();viewReceta(\''+esc(r.id||'')+'\')"><svg class="ic"><use href="#i-note"/></svg> view recipe</span>' : '';
+      return {t:'<div style="display:flex;align-items:center">'+img+'<span>'+tb+esc(r.platillo||'')+'</span></div>', s:esc(r.categoria||'')+' · Cost '+money(c)+' · Margin '+m+'%'+rec, amt:money(p)}; } },
+  prov: { tab:'proveedores', title:'Vendors', singular:'vendor',
     fields:[
-      {k:'nombre',l:'Nombre',t:'text',req:1},
-      {k:'contacto',l:'Contacto',t:'text'},
-      {k:'telefono',l:'Teléfono',t:'text'},
+      {k:'nombre',l:'Name',t:'text',req:1},
+      {k:'contacto',l:'Contact',t:'text'},
+      {k:'telefono',l:'Phone',t:'text'},
       {k:'email',l:'Email',t:'text'},
-      {k:'categoria',l:'Categoría',t:'select',opts:['Mariscos','Carnes','Abarrotes','Bebidas','Desechables','Servicios','Otros']},
-      {k:'notas',l:'Notas',t:'text'}
+      {k:'categoria',l:'Category',t:'select',opts:['Seafood','Meats','Groceries','Beverages','Disposables','Services','Other']},
+      {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ return {t:esc(r.nombre||''), s:esc(r.categoria||'')+(r.telefono?' · '+esc(r.telefono):''), badge:''}; } },
-  act: { tab:'actividades', title:'Actividades', singular:'actividad',
+  act: { tab:'actividades', title:'Activities', singular:'activity',
     fields:[
-      {k:'fecha',l:'Fecha',t:'date',req:1},
-      {k:'actividad',l:'Actividad',t:'text',req:1},
-      {k:'detalle',l:'Detalle',t:'text'},
-      {k:'meta',l:'Meta',t:'text'},
+      {k:'fecha',l:'Date',t:'date',req:1},
+      {k:'actividad',l:'Activity',t:'text',req:1},
+      {k:'detalle',l:'Detail',t:'text'},
+      {k:'meta',l:'Goal',t:'text'},
       {k:'marketing',l:'Marketing',t:'text'},
-      {k:'notas',l:'Notas',t:'text'},
-      {k:'trimestre',l:'Trimestre',t:'select',opts:['Q1','Q2','Q3','Q4']},
-      {k:'anio',l:'Año',t:'text'}
+      {k:'notas',l:'Notes',t:'text'},
+      {k:'trimestre',l:'Quarter',t:'select',opts:['Q1','Q2','Q3','Q4']},
+      {k:'anio',l:'Year',t:'text'}
     ],
     row:function(r){ return {t:esc(r.fecha||'')+' · '+esc(r.actividad||''), s:esc(r.detalle||'')+(r.meta?' · <svg class="ic"><use href="#i-target"/></svg> '+esc(r.meta):''), badge:r.trimestre?'<span class="badge">'+esc(r.trimestre)+'</span>':''}; } }
 };
@@ -653,17 +653,17 @@ async function getRows(tab){
   return rows;
 }
 
-var MENU_FILT = 'Todo';
+var MENU_FILT = 'All';
 async function renderList(key){
   var def = TABDEF[key], el = document.getElementById('v-'+key);
-  var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra sugerida</button>' : '';
+  var extra = key==='inventario' ? '<button class="btn" style="margin:0 0 10px" onclick="openOrder()"><svg class="ic"><use href="#i-clip"/></svg> Suggested purchase order</button>' : '';
   if (key==='menu') {
     extra = '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-      ['Todo','Comida','Barra'].map(function(f){
-return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding:9px" onclick="setMenuFilt(\''+f+'\')">'+(f==='Comida'?'<svg class="ic"><use href="#i-utensils"/></svg> ':f==='Barra'?'<svg class="ic"><use href="#i-wine"/></svg> ':'')+f+'</button>';
+      ['All','Food','Bar'].map(function(f){
+return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding:9px" onclick="setMenuFilt(\''+f+'\')">'+(f==='Food'?'<svg class="ic"><use href="#i-utensils"/></svg> ':f==='Bar'?'<svg class="ic"><use href="#i-wine"/></svg> ':'')+f+'</button>';
       }).join('') + '</div>';
   }
-  el.innerHTML = '<h2 class="st">'+def.title+'</h2>'+extra+'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
+  el.innerHTML = '<h2 class="st">'+def.title+'</h2>'+extra+'<div class="toolbar"><input id="q-'+key+'" placeholder="Search…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Loading…</div></div>';
   try {
     var rows = await getRows(def.tab);
     paintList(key, rows);
@@ -672,14 +672,14 @@ return '<button class="btn '+(MENU_FILT===f?'':'sec')+'" style="margin:0;padding
 function setMenuFilt(f){ MENU_FILT = f; renderList('menu'); }
 var _paintList = paintList;
 paintList = function(key, rows){
-  if (key==='menu' && MENU_FILT!=='Todo') rows = rows.filter(function(r){ return r.tipo===MENU_FILT; });
+  if (key==='menu' && MENU_FILT!=='All') rows = rows.filter(function(r){ return r.tipo===MENU_FILT; });
   _paintList(key, rows);
 };
 
 /* ============ ORDEN DE COMPRA (por pares) ============ */
 async function openOrder(){
   var el = document.getElementById('v-inventario');
-  el.innerHTML = '<div class="empty">Calculando…</div>';
+  el.innerHTML = '<div class="empty">Calculating…</div>';
   var rows = await getRows('inventario');
   var need = [];
   rows.forEach(function(r){
@@ -690,28 +690,28 @@ async function openOrder(){
     }
   });
   if (!need.length) {
-    el.innerHTML = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra</h2><div class="empty">Todo está sobre el par. Nada que pedir. <svg class="ic"><use href="#i-checksq"/></svg></div><button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
+    el.innerHTML = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Purchase order</h2><div class="empty">Everything is above par. Nothing to order. <svg class="ic"><use href="#i-checksq"/></svg></div><button class="btn sec" onclick="renderList(\'inventario\')">← Back to inventory</button>';
     return;
   }
   var groups = {};
-  need.forEach(function(n){ var c = n.r.categoria||'Sin categoría'; (groups[c]=groups[c]||[]).push(n); });
-  var html = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Orden de compra · '+need.length+' productos</h2>';
+  need.forEach(function(n){ var c = n.r.categoria||'No category'; (groups[c]=groups[c]||[]).push(n); });
+  var html = '<h2 class="st"><svg class="ic"><use href="#i-clip"/></svg> Purchase order · '+need.length+' products</h2>';
   Object.keys(groups).sort().forEach(function(c){
     html += '<h2 class="st" style="margin-top:12px">'+esc(c)+'</h2><div class="list">';
     groups[c].forEach(function(n){
       var r = n.r;
-      html += '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">Tienes '+esc(r.existencia||'0')+' '+esc(r.unidad||'')+' · Par '+esc(r.minimo)+'</div></div><div style="text-align:right"><span class="badge bad">Pedir '+n.sug+' '+esc(r.unidad||'')+'</span></div></div>';
+      html += '<div class="row-item"><div><div class="t">'+esc(r.producto)+'</div><div class="s">On hand '+esc(r.existencia||'0')+' '+esc(r.unidad||'')+' · Par '+esc(r.minimo)+'</div></div><div style="text-align:right"><span class="badge bad">Order '+n.sug+' '+esc(r.unidad||'')+'</span></div></div>';
     });
     html += '</div>';
   });
-  html += '<p style="font-size:12px;color:var(--muted)">Sugerido = llenar hasta el máximo (o al par si no hay máximo). Cuando jales las ventas del Toast, el sugerido también va a considerar lo que se vende.</p>';
-  html += '<button class="btn sec" onclick="renderList(\'inventario\')">← Volver al inventario</button>';
+  html += '<p style="font-size:12px;color:var(--muted)">Suggested = fill up to the max (or to par if there is no max). When Toast sales are pulled in, the suggestion will also factor in what sells.</p>';
+  html += '<button class="btn sec" onclick="renderList(\'inventario\')">← Back to inventory</button>';
   el.innerHTML = html;
 }
 function paintList(key, rows){
   var def = TABDEF[key];
   var box = document.getElementById('list-'+key);
-  if (!rows.length) { box.innerHTML = '<div class="empty">Sin registros. Toca + para agregar.</div>'; return; }
+  if (!rows.length) { box.innerHTML = '<div class="empty">No records. Tap + to add.</div>'; return; }
   box.innerHTML = rows.map(function(r){
     var c = def.row(r);
     return '<div class="row-item" onclick="openForm(\''+key+'\',\''+esc(r.id)+'\')">' +
@@ -733,29 +733,29 @@ var PERS_VISTA = 'personal';
 function setPersVista(v){ PERS_VISTA = v; renderPersonal(); }
 function persToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
-    [['personal','<svg class="ic"><use href="#i-users"/></svg> Personal'],['training','<svg class="ic"><use href="#i-award"/></svg> Training'],['evaluaciones','<svg class="ic"><use href="#i-star"/></svg> Evaluaciones'],['puestos','<svg class="ic"><use href="#i-clip"/></svg> Puestos']].map(function(v){
+    [['personal','<svg class="ic"><use href="#i-users"/></svg> Staff'],['training','<svg class="ic"><use href="#i-award"/></svg> Training'],['evaluaciones','<svg class="ic"><use href="#i-star"/></svg> Evaluations'],['puestos','<svg class="ic"><use href="#i-clip"/></svg> Positions']].map(function(v){
       return '<button class="btn '+(PERS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setPersVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
 async function renderPersonal(){
   var el = document.getElementById('v-personal');
   if (PERS_VISTA==='personal'){
-    el.innerHTML = '<h2 class="st">Personal</h2>'+persToggle()+'<div class="toolbar"><input id="q-personal" placeholder="Buscar…" oninput="filterList(\'personal\')"></div><div class="list" id="list-personal"><div class="empty">Cargando…</div></div>';
+    el.innerHTML = '<h2 class="st">Staff</h2>'+persToggle()+'<div class="toolbar"><input id="q-personal" placeholder="Search…" oninput="filterList(\'personal\')"></div><div class="list" id="list-personal"><div class="empty">Loading…</div></div>';
     try { paintList('personal', await getRows('personal')); }
     catch(e){ document.getElementById('list-personal').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
     return;
   }
   var key = PERS_VISTA, def = TABDEF[key];
   var addBtn = key==='training'
-    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'training_progreso\')">+ Registrar progreso</button>'
+    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'training_progreso\')">+ Log progress</button>'
     : key==='puestos'
-    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'puestos\')">+ Nuevo puesto</button>'
-    : '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'evaluaciones\')">+ Nueva evaluación</button>';
+    ? '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'puestos\')">+ New position</button>'
+    : '<button class="btn" style="margin:0 0 10px" onclick="openForm(\'evaluaciones\')">+ New evaluation</button>';
   var sub = key==='training'
-    ? '<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn sm sec" style="margin:0" onclick="openForm(\'training\')">+ Programa</button></div>'
+    ? '<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn sm sec" style="margin:0" onclick="openForm(\'training\')">+ Program</button></div>'
     : '';
-  el.innerHTML = '<h2 class="st">Personal</h2>'+persToggle()+addBtn+sub
-    +'<div class="toolbar"><input id="q-'+key+'" placeholder="Buscar…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Cargando…</div></div>';
+  el.innerHTML = '<h2 class="st">Staff</h2>'+persToggle()+addBtn+sub
+    +'<div class="toolbar"><input id="q-'+key+'" placeholder="Search…" oninput="filterList(\''+key+'\')"></div><div class="list" id="list-'+key+'"><div class="empty">Loading…</div></div>';
   try { paintList(key, await getRows(def.tab)); }
   catch(e){ document.getElementById('list-'+key).innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
@@ -769,8 +769,8 @@ var MES_SEL = todayStr().substring(0,7);
 var DIA_INIT = false;
 function mondayOf(d){ var x=new Date(d); var day=(x.getDay()+6)%7; x.setHours(12,0,0,0); x.setDate(x.getDate()-day); return dStr(x); }
 function setVentasVista(v){ VENTAS_VISTA = v; renderVentas(); }
-var DNAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-var MNAMES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var DNAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MNAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 /* Metas del formato OP-ADMIN COSTA 1604: semana $54,000 (lun 4,000, mar 4,000, mié 5,000, jue 8,000, vie 13,000, sáb 13,500, dom 6,500) */
 var META_DIA = [6500,4000,4000,5000,8000,13000,13500];
 function metaDia(f){ var d=new Date(f+'T12:00:00'); return isNaN(d)?0:(META_DIA[d.getDay()]||0); }
@@ -789,13 +789,13 @@ function aggRango(v,g,a,b){
   ag.desc=sumK(vv,'descuentos'); ag.voids=sumK(vv,'voids');
   ag.efec=sumK(vv,'efectivo'); ag.tarj=sumK(vv,'tarjeta');
   ag.des=sumK(vv,'desayuno'); ag.com=sumK(vv,'comida'); ag.cen=sumK(vv,'cena'); ag.noc=sumK(vv,'noche');
-  ag.gMC=gcat(gg,'Mercancía Comida'); ag.gML=gcat(gg,'Mercancía Licor');
-  var foh=gcat(gg,'Desechables'), limp=gcat(gg,'Limpieza');
+  ag.gMC=gcat(gg,'Food Merchandise'); ag.gML=gcat(gg,'Liquor Merchandise');
+  var foh=gcat(gg,'Disposables'), limp=gcat(gg,'Cleaning');
   ag.gFOH={t:foh.t+limp.t,n:foh.n+limp.n};
-  ag.gRenta=gcat(gg,'Renta');
-  var ot={t:0,n:0}; ['Servicios','Equipo','Marketing','Música y Entretenimiento','Reparaciones','Otros'].forEach(function(c){ var s=gcat(gg,c); ot.t+=s.t; ot.n+=s.n; });
+  ag.gRenta=gcat(gg,'Rent');
+  var ot={t:0,n:0}; ['Services','Equipment','Marketing','Music & Entertainment','Repairs','Other'].forEach(function(c){ var s=gcat(gg,c); ot.t+=s.t; ot.n+=s.n; });
   ag.gOtros=ot;
-  var gt={t:0,n:0}; gg.forEach(function(r){ if((r.categoria||'')!=='Nómina'){ gt.t+=parseFloat(r.monto)||0; gt.n++; } });
+  var gt={t:0,n:0}; gg.forEach(function(r){ if((r.categoria||'')!=='Payroll'){ gt.t+=parseFloat(r.monto)||0; gt.n++; } });
   ag.gTot=gt;
   ag.notas=vv.map(function(r){ return r.notas; }).filter(function(x){ return x; }).join(' · ');
   return ag;
@@ -823,25 +823,25 @@ function formatoRows(){
   return [
     {sec:'INCOME'},
     {l:'META (GOAL)', f:function(a,dv,lb,meta){ return meta; }, m:1},
-    {l:'VENTAS NETAS', f:function(a){ return a.net.n?a.net.t:null; }, m:1},
-    {l:'DIFERENCIA VS META', f:function(a,dv,lb,meta){ return a.net.n?a.net.t-meta:null; }, m:1},
-    {l:'GRATIFICACIÓN', f:function(a){ return a.grat.n?a.grat.t:null; }, s:1},
-    {l:'IMPUESTOS', f:function(a){ return a.imp.n?a.imp.t:null; }, s:1},
-    {l:'PROPINAS', f:function(a){ return a.prop.n?a.prop.t:null; }, s:1},
+    {l:'NET SALES', f:function(a){ return a.net.n?a.net.t:null; }, m:1},
+    {l:'DIFFERENCE VS GOAL', f:function(a,dv,lb,meta){ return a.net.n?a.net.t-meta:null; }, m:1},
+    {l:'GRATUITY', f:function(a){ return a.grat.n?a.grat.t:null; }, s:1},
+    {l:'TAXES', f:function(a){ return a.imp.n?a.imp.t:null; }, s:1},
+    {l:'TIPS', f:function(a){ return a.prop.n?a.prop.t:null; }, s:1},
     {l:'TOTAL', f:function(a,dv){ return dv.totalAmt; }, m:1},
-    {l:'TARJETA', f:function(a){ return a.tarj.n?a.tarj.t:null; }, s:1},
-    {l:'EFECTIVO', f:function(a){ return a.efec.n?a.efec.t:null; }, s:1},
-    {l:'TOTAL COBRADO', f:function(a,dv){ return dv.cobrado; }, m:1},
+    {l:'CARD', f:function(a){ return a.tarj.n?a.tarj.t:null; }, s:1},
+    {l:'CASH', f:function(a){ return a.efec.n?a.efec.t:null; }, s:1},
+    {l:'TOTAL COLLECTED', f:function(a,dv){ return dv.cobrado; }, m:1},
     {l:'# OF GUEST', f:function(a){ return a.inv.n?a.inv.t:null; }, n:1},
     {l:'PPA', f:function(a,dv){ return dv.ppa; }, m:1},
-    {sec:'DESAYUNO / COMIDA / CENA'},
-    {l:'DESAYUNO', f:function(a){ return a.des.n?a.des.t:null; }, s:1},
-    {l:'COMIDA', f:function(a){ return a.com.n?a.com.t:null; }, s:1},
-    {l:'CENA', f:function(a){ return a.cen.n?a.cen.t:null; }, s:1},
+    {sec:'BREAKFAST / LUNCH / DINNER'},
+    {l:'BREAKFAST', f:function(a){ return a.des.n?a.des.t:null; }, s:1},
+    {l:'LUNCH', f:function(a){ return a.com.n?a.com.t:null; }, s:1},
+    {l:'DINNER', f:function(a){ return a.cen.n?a.cen.t:null; }, s:1},
     {l:'LATE NIGHT', f:function(a){ return a.noc.n?a.noc.t:null; }, s:1},
     {l:'TOTAL', f:function(a,dv){ return dv.mealTot; }, m:1},
-    {sec:'DESCUENTOS Y VOIDS'},
-    {l:'DESCUENTOS Y CORTESÍAS', f:function(a){ return a.desc.n?a.desc.t:null; }, s:1},
+    {sec:'DISCOUNTS & VOIDS'},
+    {l:'DISCOUNTS & COMPS', f:function(a){ return a.desc.n?a.desc.t:null; }, s:1},
     {l:'VOID ORDERS', f:function(a){ return a.voids.n?a.voids.t:null; }, s:1},
     {sec:'SALES CAT. SUMMARY'},
     {l:'FOOD', f:function(a){ return a.vC.n?a.vC.t:null; }, s:1},
@@ -850,26 +850,26 @@ function formatoRows(){
     {l:'DRAFT BEER', f:function(){ return null; }},
     {l:'NA BEVERAGE', f:function(){ return null; }},
     {l:'WINE', f:function(){ return null; }},
-    {sec:'GASTOS'},
+    {sec:'EXPENSES'},
     {l:'TOTAL KITCHEN', f:function(a){ return a.gMC.n?a.gMC.t:null; }, s:1},
     {l:'TOTAL BAR', f:function(a){ return a.gML.n?a.gML.t:null; }, s:1},
     {l:'TOTAL FOH', f:function(a){ return a.gFOH.n?a.gFOH.t:null; }, s:1},
-    {l:'RENTA', f:function(a){ return a.gRenta.n?a.gRenta.t:null; }, s:1},
-    {l:'OTROS GASTOS', f:function(a){ return a.gOtros.n?a.gOtros.t:null; }, s:1},
-    {sec:'LABOR Y COSTOS'},
-    {l:'LABOR (NÓMINA)', f:function(a,dv,lb){ return lb; }, m:1},
+    {l:'RENT', f:function(a){ return a.gRenta.n?a.gRenta.t:null; }, s:1},
+    {l:'OTHER EXPENSES', f:function(a){ return a.gOtros.n?a.gOtros.t:null; }, s:1},
+    {sec:'LABOR & COSTS'},
+    {l:'LABOR (PAYROLL)', f:function(a,dv,lb){ return lb; }, m:1},
     {l:'COST OF GOODS', f:function(a,dv){ return dv.cogs; }, m:1},
     {l:'FOOD COST %', f:function(a,dv){ return dv.foodPct; }, p:1},
     {l:'LIQUOR COST %', f:function(a,dv){ return dv.liqPct; }, p:1},
     {l:'LABOR %', f:function(a,dv){ return dv.labPct; }, p:1},
     {l:'PRIME COST %', f:function(a,dv){ return dv.prime; }, p:1},
-    {l:'UTILIDAD', f:function(a,dv){ return dv.util; }, m:1}
+    {l:'PROFIT', f:function(a,dv){ return dv.util; }, m:1}
   ];
 }
 function formatoTable(cols){
   cols.forEach(function(c){ c.dv=deriv(c.ag, c.labor); });
   var rows=formatoRows();
-  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px"><tr><th style="text-align:left;padding:6px">Concepto</th>'+cols.map(function(c){ return '<th style="padding:6px;text-align:right">'+c.h+'</th>'; }).join('')+'</tr>';
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px"><tr><th style="text-align:left;padding:6px">Concept</th>'+cols.map(function(c){ return '<th style="padding:6px;text-align:right">'+c.h+'</th>'; }).join('')+'</tr>';
   rows.forEach(function(r){
     if(r.sec){ h+='<tr><td colspan="'+(cols.length+1)+'" style="padding:8px 6px 3px;font-weight:700;background:#f4f2ee">'+r.sec+'</td></tr>'; return; }
     h+='<tr style="border-top:1px solid #eee"><td style="padding:6px'+(r.m?';font-weight:700':'')+'">'+r.l+'</td>';
@@ -883,7 +883,7 @@ function formatoTable(cols){
 }
 function ventasToggle(){
   return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
-    [['dia','<svg class="ic"><use href="#i-cal"/></svg> Día'],['semana','<svg class="ic"><use href="#i-chart"/></svg> Semana'],['mes','<svg class="ic"><use href="#i-cal"/></svg> Mes'],['trimestre','<svg class="ic"><use href="#i-trend"/></svg> Trimestre']].map(function(v){
+    [['dia','<svg class="ic"><use href="#i-cal"/></svg> Day'],['semana','<svg class="ic"><use href="#i-chart"/></svg> Week'],['mes','<svg class="ic"><use href="#i-cal"/></svg> Month'],['trimestre','<svg class="ic"><use href="#i-trend"/></svg> Quarter']].map(function(v){
       return '<button class="btn '+(VENTAS_VISTA===v[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setVentasVista(\''+v[0]+'\')">'+v[1]+'</button>';
     }).join('') + '</div>';
 }
@@ -902,11 +902,11 @@ function diaHtml(v,g){
     +'<input type="date" value="'+f+'" onchange="DIA_SEL=this.value;renderVentas()" style="padding:8px;border:1px solid #ddd;border-radius:8px">'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="diaNav(1)">›</button>'
     +'<b>'+dw+' '+f+'</b>'
-    +'<button class="btn" style="margin:0 0 0 auto;padding:8px 12px" onclick="editarVentaDia(\''+f+'\')">Editar captura</button></div>';
-  if(!ag.n){ h+='<div class="empty">Sin ventas capturadas este día. Toca “Editar captura” para agregarlas.</div>'; }
+    +'<button class="btn" style="margin:0 0 0 auto;padding:8px 12px" onclick="editarVentaDia(\''+f+'\')">Edit entry</button></div>';
+  if(!ag.n){ h+='<div class="empty">No sales entered for this day. Tap “Edit entry” to add them.</div>'; }
   h+=formatoTable([{h:dw+' '+f.substring(5), ag:ag, labor:null, meta:metaDia(f)}]);
-  h+='<p style="color:#888;font-size:12px">Labor del día no disponible: la nómina es semanal, se ve en la vista Semana. Las filas en — no se capturaron ese día.</p>';
-  if(ag.notas) h+='<p style="font-size:13px"><b>Notas:</b> '+esc(ag.notas)+'</p>';
+  h+='<p style="color:#888;font-size:12px">Daily labor not available: payroll is weekly, see the Week view. Rows marked — were not entered that day.</p>';
+  if(ag.notas) h+='<p style="font-size:13px"><b>Notes:</b> '+esc(ag.notas)+'</p>';
   return h;
 }
 function semNav(d){ var x=new Date((SEMANA_SEL||mondayOf(todayStr()))+'T12:00:00'); x.setDate(x.getDate()+d*7); SEMANA_SEL=dStr(x); renderVentas(); }
@@ -918,10 +918,10 @@ function semanaHtml(v,g,n){
   cols.push({h:'TOTAL', ag:aggRango(v,g,mon,sun), labor:laborRango(n,mon,sun), meta:metaRango(mon,sun)});
   var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="semNav(-1)">‹</button>'
-    +'<b>Semana del '+mon+' al '+sun+'</b>'
+    +'<b>Week of '+mon+' to '+sun+'</b>'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="semNav(1)">›</button></div>';
   h+=formatoTable(cols);
-  h+='<p style="color:#888;font-size:12px">Meta semanal $54,000. Labor = nómina con periodoFin en la semana. Utilidad = ventas netas − gastos − nómina.</p>';
+  h+='<p style="color:#888;font-size:12px">Weekly goal $54,000. Labor = payroll rows with period end inside the week. Profit = net sales − expenses − payroll.</p>';
   return h;
 }
 function mesNav(d){ var y=parseInt(MES_SEL.substring(0,4),10), m=parseInt(MES_SEL.substring(5,7),10)-1+d; var dt=new Date(y,m,1); MES_SEL=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); renderVentas(); }
@@ -934,15 +934,15 @@ function mesHtml(v,g,n){
   var cols=mons.map(function(mon){
     var s=new Date(mon+'T12:00:00'); var e=new Date(s); e.setDate(e.getDate()+6);
     var ra=dStr(s)<a?a:dStr(s), rb=dStr(e)>b?b:dStr(e);
-    return {h:'Sem '+ra.substring(5), ag:aggRango(v,g,ra,rb), labor:laborRango(n,ra,rb), meta:metaRango(ra,rb)};
+    return {h:'Wk '+ra.substring(5), ag:aggRango(v,g,ra,rb), labor:laborRango(n,ra,rb), meta:metaRango(ra,rb)};
   });
-  cols.push({h:'TOTAL MES', ag:aggRango(v,g,a,b), labor:laborRango(n,a,b), meta:metaRango(a,b)});
+  cols.push({h:'MONTH TOTAL', ag:aggRango(v,g,a,b), labor:laborRango(n,a,b), meta:metaRango(a,b)});
   var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="mesNav(-1)">‹</button>'
     +'<b>'+MNAMES[m+1]+' '+y+'</b>'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="mesNav(1)">›</button></div>';
   h+=formatoTable(cols);
-  h+='<p style="color:#888;font-size:12px">Cada columna es una semana (lun–dom) dentro del mes. Labor = nómina con periodoFin en el rango.</p>';
+  h+='<p style="color:#888;font-size:12px">Each column is one week (Mon–Sun) within the month. Labor = payroll rows with period end in range.</p>';
   return h;
 }
 /* ============ CONTROL DEL TRIMESTRE ============ */
@@ -950,22 +950,22 @@ var TRIM = (function(){ var d=new Date(); return {q:Math.floor(d.getMonth()/3)+1
 function trimNav(d){ TRIM.q+=d; if(TRIM.q<1){TRIM.q=4;TRIM.y--;} if(TRIM.q>4){TRIM.q=1;TRIM.y++;} renderVentas(); }
 function trimHtml(v,g,n){
   var months=[(TRIM.q-1)*3,(TRIM.q-1)*3+1,(TRIM.q-1)*3+2];
-  var mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function mRange(mi){ var a=TRIM.y+'-'+String(mi+1).padStart(2,'0')+'-01'; var b=TRIM.y+'-'+String(mi+1).padStart(2,'0')+'-'+new Date(TRIM.y,mi+1,0).getDate(); return [a,b]; }
   var cols=months.map(function(mi){ var r=mRange(mi); return {h:mn[mi], ag:aggRango(v,g,r[0],r[1]), labor:laborRango(n,r[0],r[1]), meta:metaRango(r[0],r[1])}; });
   var q0=mRange(months[0])[0], q1=mRange(months[2])[1];
-  cols.push({h:'TRIM', ag:aggRango(v,g,q0,q1), labor:laborRango(n,q0,q1), meta:metaRango(q0,q1)});
+  cols.push({h:'QTR', ag:aggRango(v,g,q0,q1), labor:laborRango(n,q0,q1), meta:metaRango(q0,q1)});
   var h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="trimNav(-1)">‹</button>'
     +'<b>Q'+TRIM.q+' '+TRIM.y+'</b>'
     +'<button class="btn sec" style="margin:0;padding:6px 12px" onclick="trimNav(1)">›</button></div>';
   h+=formatoTable(cols);
-  h+='<p style="color:#888;font-size:12px">Meta mensual = suma de las metas diarias del formato ($54,000/semana). Utilidad = ventas netas − gastos − nómina.</p>';
+  h+='<p style="color:#888;font-size:12px">Monthly goal = sum of the format\'s daily goals ($54,000/week). Profit = net sales − expenses − payroll.</p>';
   return h;
 }
 async function renderVentas(){
   var el = document.getElementById('v-ventas');
-  el.innerHTML = '<h2 class="st">Ventas · Formato OP-ADMIN</h2>'+ventasToggle()+'<div id="ventas-body"><div class="empty">Cargando…</div></div>';
+  el.innerHTML = '<h2 class="st">Sales · OP-ADMIN Format</h2>'+ventasToggle()+'<div id="ventas-body"><div class="empty">Loading…</div></div>';
   try {
     var v = await getRows('ventas'), g = await getRows('gastos'), n = await getRows('nomina');
     if(!DIA_INIT){
@@ -988,7 +988,7 @@ RENDER['ventas'] = renderVentas;
 /* ============ CALENDARIO DE ACTIVIDADES ============ */
 function renderAct(){
   var el = document.getElementById('v-act');
-  el.innerHTML = '<h2 class="st">Actividades 2026 · CP1604</h2><div class="empty">Cargando…</div>';
+  el.innerHTML = '<h2 class="st">Activities 2026 · CP1604</h2><div class="empty">Loading…</div>';
   getRows('actividades').then(function(rows){
     var mo = {};
     rows.forEach(function(r){
@@ -996,8 +996,8 @@ function renderAct(){
       (mo[f.substring(0,7)]=mo[f.substring(0,7)]||[]).push(r);
     });
     var keys = Object.keys(mo).sort();
-    if (!keys.length){ el.innerHTML = '<h2 class="st">Actividades</h2><div class="empty">Sin actividades.</div>'; return; }
-    var html = '<h2 class="st">Actividades 2026 · CP1604</h2>';
+    if (!keys.length){ el.innerHTML = '<h2 class="st">Activities</h2><div class="empty">No activities.</div>'; return; }
+    var html = '<h2 class="st">Activities 2026 · CP1604</h2>';
     keys.forEach(function(k){
       var y = k.substring(0,4), m = parseInt(k.substring(5,7),10);
       var items = mo[k].sort(function(a,b){ return String(a.fecha)<String(b.fecha)?-1:1; }).map(function(r){
@@ -1010,12 +1010,12 @@ function renderAct(){
       html += '<h2 class="st" style="margin-top:14px">'+MNAMES[m]+' '+y+'</h2><div class="list">'+items+'</div>';
     });
     el.innerHTML = html;
-  }).catch(function(e){ el.innerHTML = '<h2 class="st">Actividades</h2><div class="empty">Error: '+esc(e.message)+'</div>'; });
+  }).catch(function(e){ el.innerHTML = '<h2 class="st">Activities</h2><div class="empty">Error: '+esc(e.message)+'</div>'; });
 }
 RENDER['act'] = renderAct;
 
 /* ============ CHECKLISTS FOH / BOH ============ */
-var CHK_AREA = 'FOH', CHK_MOM = 'Apertura', CHK_RESP = '';
+var CHK_AREA = 'FOH', CHK_MOM = 'Opening', CHK_RESP = '';
 function setChk(a,m){ if(a) CHK_AREA=a; if(m) CHK_MOM=m; renderChecks(); }
 async function renderChecks(){
   var el = document.getElementById('v-checks');
@@ -1024,10 +1024,10 @@ async function renderChecks(){
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
     +[['FOH','<svg class="ic"><use href="#i-utensils"/></svg> FOH'],['BOH','<svg class="ic"><use href="#i-flame"/></svg> BOH']].map(function(v){ return '<button class="btn '+(CHK_AREA===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-    +[['Apertura','<svg class="ic"><use href="#i-sunrise"/></svg> Apertura'],['Cierre','<svg class="ic"><use href="#i-moon"/></svg> Cierre']].map(function(v){ return '<button class="btn '+(CHK_MOM===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(null,\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
-    +'<label>Responsable</label><input id="chkResp" style="width:100%;padding:10px;font-size:15px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px" value="'+esc(CHK_RESP)+'" oninput="CHK_RESP=this.value" placeholder="Nombre del responsable">'
-    +'<div class="list" id="chkList"><div class="empty">Cargando…</div></div>'
-    +'<div style="margin-top:10px"><button class="btn sec" style="margin:0" onclick="openForm(\'checklists\')">+ Editar tareas</button></div>';
+    +[['Opening','<svg class="ic"><use href="#i-sunrise"/></svg> Opening'],['Closing','<svg class="ic"><use href="#i-moon"/></svg> Closing']].map(function(v){ return '<button class="btn '+(CHK_MOM===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(null,\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
+    +'<label>In charge</label><input id="chkResp" style="width:100%;padding:10px;font-size:15px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px" value="'+esc(CHK_RESP)+'" oninput="CHK_RESP=this.value" placeholder="Name of the person in charge">'
+    +'<div class="list" id="chkList"><div class="empty">Loading…</div></div>'
+    +'<div style="margin-top:10px"><button class="btn sec" style="margin:0" onclick="openForm(\'checklists\')">+ Edit tasks</button></div>';
   try {
     var mc = await api('list',{tab:'checklists'});
     var lg = await api('list',{tab:'checklist_log'});
@@ -1035,16 +1035,16 @@ async function renderChecks(){
       .sort(function(a,b){ return (parseFloat(a.orden)||0)-(parseFloat(b.orden)||0); });
     var logs = {};
     (lg.rows||[]).forEach(function(r){ if(String(r.fecha).substring(0,10)===hoy) logs[r.checklistId]=r; });
-    var done = tasks.filter(function(t){ var l=logs[t.id]; return l && String(l.hecho).toLowerCase()==='sí'; }).length;
+    var done = tasks.filter(function(t){ var l=logs[t.id]; return l && String(l.hecho).toLowerCase()==='yes'; }).length;
     document.getElementById('chkList').innerHTML =
-      (tasks.length?'<div class="card" style="margin-bottom:8px"><div class="lbl">Avance</div><div class="val">'+done+' / '+tasks.length+'</div></div>':'')
+      (tasks.length?'<div class="card" style="margin-bottom:8px"><div class="lbl">Progress</div><div class="val">'+done+' / '+tasks.length+'</div></div>':'')
       + tasks.map(function(t){
-        var l = logs[t.id], on = l && String(l.hecho).toLowerCase()==='sí';
+        var l = logs[t.id], on = l && String(l.hecho).toLowerCase()==='yes';
         return '<div class="row-item" onclick="chkToggle(\''+esc(t.id)+'\','+(on?'false':'true')+')">'
           +'<div style="font-size:22px;min-width:30px">'+(on?'<svg class="ic"><use href="#i-checksq"/></svg>':'<svg class="ic"><use href="#i-square"/></svg>')+'</div>'
           +'<div><div class="t" style="'+(on?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.tarea)+'</div>'
           +(l&&l.responsable?'<div class="s">'+esc(l.responsable)+'</div>':'')+'</div></div>';
-      }).join('') || '<div class="empty">Sin tareas.</div>';
+      }).join('') || '<div class="empty">No tasks.</div>';
   } catch(e){ document.getElementById('chkList').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
 }
 async function chkToggle(chkId, val){
@@ -1052,8 +1052,8 @@ async function chkToggle(chkId, val){
   try {
     var lg = await api('list',{tab:'checklist_log'});
     var ex = (lg.rows||[]).find(function(r){ return String(r.fecha).substring(0,10)===hoy && String(r.checklistId)===String(chkId); });
-    if (ex) await api('update',{tab:'checklist_log', id:ex.id, fields:{hecho: val?'Sí':'No', responsable: CHK_RESP}}, true);
-    else await api('create',{tab:'checklist_log', record:{fecha:hoy, area:CHK_AREA, momento:CHK_MOM, checklistId:chkId, hecho: val?'Sí':'No', responsable: CHK_RESP}}, true);
+    if (ex) await api('update',{tab:'checklist_log', id:ex.id, fields:{hecho: val?'Yes':'No', responsable: CHK_RESP}}, true);
+    else await api('create',{tab:'checklist_log', record:{fecha:hoy, area:CHK_AREA, momento:CHK_MOM, checklistId:chkId, hecho: val?'Yes':'No', responsable: CHK_RESP}}, true);
     renderChecks();
   } catch(e){ alert('Error: '+e.message); }
 }
@@ -1068,7 +1068,7 @@ function fldHtml(f, val){
       f.opts.map(function(o){ return '<option value="'+esc(o)+'"'+(String(val)===String(o)?' selected':'')+'>'+esc(o)+'</option>'; }).join('') + '</select>';
   }
   if (f.t==='foto') {
-    var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">Ver archivo actual</a></div>' : '';
+    var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">View current file</a></div>' : '';
     return '<label>'+f.l+'</label>' + link +
       '<input id="f_'+f.k+'" type="hidden" value="'+esc(val)+'">' +
       '<input id="foto_'+f.k+'" type="file" accept="image/*,.pdf,application/pdf" onchange="fotoPreview(this,\'prev_'+f.k+'\',\'nom_'+f.k+'\')">' +
@@ -1106,7 +1106,7 @@ function leerFotoBase64(file){
   return new Promise(function(resolve, reject){
     var r = new FileReader();
     r.onload = function(){ resolve(String(r.result || '')); };
-    r.onerror = function(){ reject(new Error('No se pudo leer la foto')); };
+    r.onerror = function(){ reject(new Error('Could not read the photo')); };
     r.readAsDataURL(file);
   });
 }
@@ -1119,14 +1119,14 @@ async function openForm(key, id, fechaPreset){
     rec = rows.find(function(r){ return String(r.id)===String(id); }) || {};
   } else {
     if (def.fields.some(function(f){return f.k==='fecha';})) rec.fecha = fechaPreset || todayStr();
-    if (def.fields.some(function(f){return f.k==='activo';})) rec.activo = 'Sí';
+    if (def.fields.some(function(f){return f.k==='activo';})) rec.activo = 'Yes';
     if (def.fields.some(function(f){return f.k==='pagado';})) rec.pagado = 'No';
-    if (def.fields.some(function(f){return f.k==='tipo';})) rec.tipo = (MENU_FILT==='Comida'||MENU_FILT==='Barra') ? MENU_FILT : 'Comida';
+    if (def.fields.some(function(f){return f.k==='tipo';})) rec.tipo = (MENU_FILT==='Food'||MENU_FILT==='Bar') ? MENU_FILT : 'Food';
   }
-  var html = '<h3>'+(id?'Editar':'Nuevo')+' '+def.singular+'</h3><form class="sheet" onsubmit="return saveForm(event,\''+key+'\',\''+esc(id||'')+'\')">' +
+  var html = '<h3>'+(id?'Edit':'New')+' '+def.singular+'</h3><form class="sheet" onsubmit="return saveForm(event,\''+key+'\',\''+esc(id||'')+'\')">' +
     def.fields.map(function(f){ return fldHtml(f, rec[f.k]); }).join('') +
-    '<button class="btn" type="submit">Guardar</button>' +
-    (id ? '<button class="btn danger" type="button" onclick="delRec(\''+key+'\',\''+esc(id)+'\')">Eliminar</button>' : '') +
+    '<button class="btn" type="submit">Save</button>' +
+    (id ? '<button class="btn danger" type="button" onclick="delRec(\''+key+'\',\''+esc(id)+'\')">Delete</button>' : '') +
     '</form>';
   openModal(html);
 }
@@ -1159,11 +1159,11 @@ async function saveForm(ev, key, id){
     var fotoEl = document.getElementById('foto_recibo');
     if (fotoEl && fotoEl.files && fotoEl.files[0]) {
       try {
-        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('El archivo pesa más de 15 MB');
+        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('The file is larger than 15 MB');
         var dataUrl = await leerFotoBase64(fotoEl.files[0]);
         var tipoArchivo = fotoEl.files[0].type || (/\.pdf$/i.test(fotoEl.files[0].name) ? 'application/pdf' : 'image/jpeg');
         var up = await api('uploadTicket', { data:dataUrl, mimeType: tipoArchivo, fecha: rec.fecha, proveedor: rec.proveedor }, true);
-        if (!up.ok || !up.url) throw new Error(up.error || 'El servidor no devolvió el link');
+        if (!up.ok || !up.url) throw new Error(up.error || 'The server did not return a link');
         rec.recibo = up.url;
       } catch(e){ fotoFallo = true; }
     }
@@ -1181,11 +1181,11 @@ async function saveForm(ev, key, id){
     closeModal();
     if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
-  if (guardado && fotoFallo) alert('El gasto se guardó, pero el archivo del ticket NO se subió. Edita el gasto e intenta adjuntarlo de nuevo.');
+  if (guardado && fotoFallo) alert('The expense was saved, but the ticket file was NOT uploaded. Edit the expense and try attaching it again.');
   return false;
 }
 async function delRec(key, id){
-  if (!confirm('¿Eliminar este registro?')) return;
+  if (!confirm('Delete this record?')) return;
   var def = TABDEF[key];
   try {
     var d = await api('delete', { tab:def.tab, id:id }, true);
