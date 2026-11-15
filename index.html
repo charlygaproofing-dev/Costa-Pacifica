@@ -194,6 +194,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 /* ============ CONFIG — se llena al desplegar ============ */
 var CFG = {
@@ -516,7 +517,7 @@ var TABDEF = {
       {k:'descripcion',l:'Description',t:'text',req:1},
       {k:'monto',l:'Amount $',t:'number',req:1},
       {k:'metodoPago',l:'Payment method',t:'select',opts:['Cash','Card','Transfer','Check']},
-      {k:'recibo',l:'Ticket photo or PDF',t:'foto'},
+      {k:'recibo',l:'Ticket photos or PDF (auto-fill)',t:'foto'},
       {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ return {t:esc(r.descripcion||''), s:esc(r.fecha||'')+' · '+esc(r.categoria||'')+(r.proveedor?' · '+esc(r.proveedor):''), amt:money(r.monto), badge:esc(r.categoria||'')}; } },
@@ -1167,9 +1168,10 @@ function fldHtml(f, val){
     var link = val ? '<div style="margin:2px 0 6px"><a href="'+esc(val)+'" target="_blank" rel="noopener">View current file</a></div>' : '';
     return '<label>'+f.l+'</label>' + link +
       '<input id="f_'+f.k+'" type="hidden" value="'+esc(val)+'">' +
-      '<input id="foto_'+f.k+'" type="file" accept="image/*,.pdf,application/pdf" onchange="fotoPreview(this,\'prev_'+f.k+'\',\'nom_'+f.k+'\')">' +
-      '<img id="prev_'+f.k+'" alt="" style="display:none;max-width:160px;max-height:160px;border-radius:8px;margin-top:6px">' +
-      '<div id="nom_'+f.k+'" style="display:none;margin-top:6px;font-size:13px"></div>';
+      '<input id="foto_'+f.k+'" type="file" accept="image/*,.pdf,application/pdf" multiple onchange="fotoAdd(this)">' +
+      '<div style="font-size:12px;color:#888;margin-top:4px">Add every page of the ticket or invoice — the app reads them, fills the form for you and saves them as one PDF.</div>' +
+      '<div id="paginas_'+f.k+'" style="margin-top:6px"></div>' +
+      '<div id="scan_'+f.k+'" style="display:none;margin-top:6px;font-size:13px"></div>';
   }
   if (f.t==='textarea' || f.k==='notas') return '<label>'+f.l+'</label><textarea id="f_'+f.k+'">'+esc(val)+'</textarea>';
   var type = f.t==='number' ? 'number' : (f.t==='date' ? 'date' : 'text');
@@ -1206,8 +1208,101 @@ function leerFotoBase64(file){
     r.readAsDataURL(file);
   });
 }
+/* ===== Ticket multi-página: lectura automática + PDF único =====
+   FOTO_FILES guarda las páginas del formulario abierto, en orden.
+   Al agregar páginas se leen con IA (scanTicket) y se llenan los campos;
+   al guardar, las fotos se combinan en UN solo PDF (nunca fotos sueltas). */
+var FOTO_FILES = [];
+function fotoAdd(input){
+  if (!input.files) return;
+  for (var i = 0; i < input.files.length; i++) {
+    var file = input.files[i];
+    if (FOTO_FILES.length >= 6) { alert('Maximum 6 pages per expense.'); break; }
+    if (file.size > 15*1024*1024) { alert('Skipped, larger than 15 MB: ' + file.name); continue; }
+    var esPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (esPdf && FOTO_FILES.length) { alert('A PDF cannot be combined with photos. Add either one PDF or photos.'); continue; }
+    if (!esPdf && FOTO_FILES.some(function(p){ return p.esPdf; })) { alert('A PDF cannot be combined with photos. Remove the PDF first.'); continue; }
+    FOTO_FILES.push({ file: file, esPdf: esPdf });
+  }
+  input.value = '';
+  fotoRenderPages();
+  if (FOTO_FILES.length) fotoScan();
+}
+function fotoRenderPages(){
+  var box = document.getElementById('paginas_recibo');
+  if (!box) return;
+  if (!FOTO_FILES.length) { box.innerHTML = ''; return; }
+  box.innerHTML = FOTO_FILES.map(function(p, i){
+    var thumb = p.esPdf
+      ? '<div style="width:54px;height:54px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:8px;font-size:11px;font-weight:700">PDF</div>'
+      : '<img src="' + URL.createObjectURL(p.file) + '" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px">';
+    return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0">' + thumb +
+      '<span style="font-size:13px">Page ' + (i+1) + ' · ' + esc(p.file.name || '') + '</span>' +
+      '<button type="button" class="btn sec" style="margin:0;padding:2px 10px" onclick="fotoRemove(' + i + ')">Remove</button></div>';
+  }).join('');
+}
+function fotoRemove(i){ FOTO_FILES.splice(i, 1); fotoRenderPages(); }
+function fotoSetStatus(msg, malo){
+  var s = document.getElementById('scan_recibo');
+  if (!s) return;
+  s.style.display = 'block';
+  s.style.color = malo ? '#b00' : '#2a7d4f';
+  s.textContent = msg;
+}
+function imagenReducida(file, maxLado, calidad){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    img.onload = function(){
+      var esc2 = Math.min(1, maxLado / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * esc2));
+      c.height = Math.max(1, Math.round(img.height * esc2));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = function(){ reject(new Error('Could not read an image')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function fotoScan(){
+  fotoSetStatus('Reading the ticket…');
+  try {
+    var imgs = [];
+    for (var i = 0; i < FOTO_FILES.length; i++) {
+      var p = FOTO_FILES[i];
+      if (p.esPdf) imgs.push({ data: await leerFotoBase64(p.file), mimeType: 'application/pdf' });
+      else imgs.push({ data: await imagenReducida(p.file, 1600, 0.8), mimeType: 'image/jpeg' });
+    }
+    var r = await api('scanTicket', { images: imgs }, true);
+    if (!r.ok) throw new Error(r.error || 'Scan failed');
+    var s = r.scan || {};
+    var set = function(k, v){ var el = document.getElementById('f_' + k); if (el && v !== '' && v != null) el.value = v; };
+    set('fecha', s.fecha); set('categoria', s.categoria); set('proveedor', s.proveedor);
+    set('descripcion', s.descripcion); set('monto', s.monto); set('metodoPago', s.metodoPago); set('notas', s.notas);
+    fotoSetStatus('✓ Filled in from the ticket — please check the amount and the date before saving.');
+  } catch(e) {
+    fotoSetStatus('Could not read the ticket automatically (' + e.message + '). Fill the fields by hand — the PDF will still be saved.', true);
+  }
+}
+async function buildTicketPdf(){
+  if (FOTO_FILES.length === 1 && FOTO_FILES[0].esPdf) return await leerFotoBase64(FOTO_FILES[0].file);
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  for (var i = 0; i < FOTO_FILES.length; i++) {
+    var dataUrl = await imagenReducida(FOTO_FILES[i].file, 1500, 0.72);
+    var props = doc.getImageProperties(dataUrl);
+    var pageW = 210, pageH = 297, margin = 8;
+    var w = pageW - margin * 2, h = w * props.height / props.width;
+    if (h > pageH - margin * 2) { h = pageH - margin * 2; w = h * props.width / props.height; }
+    if (i > 0) doc.addPage();
+    doc.addImage(dataUrl, 'JPEG', (pageW - w) / 2, margin, w, h);
+  }
+  return doc.output('datauristring');
+}
 async function openForm(key, id, fechaPreset){
   key = key || CUR; if (key==='dash'||key==='pl') return;
+  FOTO_FILES = [];
   var def = TABDEF[key];
   var rec = {};
   if (id) {
@@ -1250,15 +1345,18 @@ async function saveForm(ev, key, id){
     if (sc.length) rec.promedio = Math.round(sc.reduce(function(a,b){return a+b;},0)/sc.length*10)/10;
   }
   if (key==='gastos') {
-    /* Foto del ticket: se sube ANTES de guardar; el link de Drive queda en recibo.
-       Si la subida falla, el gasto se guarda sin foto y se avisa al final. */
-    var fotoEl = document.getElementById('foto_recibo');
-    if (fotoEl && fotoEl.files && fotoEl.files[0]) {
+    /* Ticket: las páginas ya se leyeron solas al agregarlas (fotoScan) y aquí
+       se guardan como UN solo PDF en Drive; el link queda en recibo.
+       Si la subida falla, el gasto se guarda sin archivo y se avisa al final. */
+    if (FOTO_FILES.length) {
       try {
-        if (fotoEl.files[0].size > 15*1024*1024) throw new Error('The file is larger than 15 MB');
-        var dataUrl = await leerFotoBase64(fotoEl.files[0]);
-        var tipoArchivo = fotoEl.files[0].type || (/\.pdf$/i.test(fotoEl.files[0].name) ? 'application/pdf' : 'image/jpeg');
-        var up = await api('uploadTicket', { data:dataUrl, mimeType: tipoArchivo, fecha: rec.fecha, proveedor: rec.proveedor }, true);
+        var datosPdf, mimePdf = 'application/pdf';
+        try { datosPdf = await buildTicketPdf(); }
+        catch(ePdf) {
+          datosPdf = await leerFotoBase64(FOTO_FILES[0].file);
+          mimePdf = FOTO_FILES[0].file.type || (/\.pdf$/i.test(FOTO_FILES[0].name) ? 'application/pdf' : 'image/jpeg');
+        }
+        var up = await api('uploadTicket', { data: datosPdf, mimeType: mimePdf, fecha: rec.fecha, proveedor: rec.proveedor }, true);
         if (!up.ok || !up.url) throw new Error(up.error || 'The server did not return a link');
         rec.recibo = up.url;
       } catch(e){ fotoFallo = true; }
