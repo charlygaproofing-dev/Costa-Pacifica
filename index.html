@@ -165,6 +165,9 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
   <div class="view" id="v-prov"></div>
   <div class="view" id="v-act"></div>
   <div class="view" id="v-checks"></div>
+<div class="view" id="v-bitacora"></div>
+<div class="view" id="v-costosfijos"></div>
+<div class="view" id="v-pl"></div>
 
   <button class="fab" id="fabBtn" onclick="openForm()">+</button>
 
@@ -247,6 +250,7 @@ async function doLogin(){
 var MODS = [
   ['dash','<svg class="dr-ic"><use href="#i-chart"/></svg>','Dashboard','Daily summary'],
   ['ventas','<svg class="dr-ic"><use href="#i-cash"/></svg>','Sales','Day, week, month & quarter'],
+  ['pl','<svg class="dr-ic"><use href="#i-trend"/></svg>','P&L','Profit, loss & break-even'],
   ['gastos','<svg class="dr-ic"><use href="#i-receipt"/></svg>','Expenses','Expense log'],
   ['personal','<svg class="dr-ic"><use href="#i-users"/></svg>','Staff','Staff, training & evaluations'],
   ['nomina','<svg class="dr-ic"><use href="#i-wallet"/></svg>','Payroll','Payments & tip-out'],
@@ -254,6 +258,7 @@ var MODS = [
   ['menu','<svg class="dr-ic"><use href="#i-utensils"/></svg>','Menu','Dishes & recipes'],
   ['prov','<svg class="dr-ic"><use href="#i-truck"/></svg>','Vendors','Vendor catalog'],
   ['act','<svg class="dr-ic"><use href="#i-cal"/></svg>','Activities','2026 calendar'],
+  ['bitacora','<svg class="dr-ic"><use href="#i-note"/></svg>','Logbook','Manager shift log'],
   ['checks','<svg class="dr-ic"><use href="#i-checksq"/></svg>','Checks','Checklists FOH / BOH']
 ];
 function toggleDrawer(open){
@@ -275,7 +280,7 @@ function go(v){
   document.querySelectorAll('.view').forEach(function(x){ x.classList.remove('active'); });
   document.getElementById('v-'+v).classList.add('active');
   document.querySelectorAll('#bottomNav button').forEach(function(b){ b.classList.toggle('on', b.dataset.v===v); });
-  document.getElementById('fabBtn').style.display = (v==='dash') ? 'none' : 'block';
+  document.getElementById('fabBtn').style.display = (v==='dash'||v==='pl') ? 'none' : 'block';
   RENDER[v]();
 }
 function openModal(html){ document.getElementById('modalBody').innerHTML = html; document.getElementById('modalBg').classList.add('open'); }
@@ -423,7 +428,25 @@ async function rDash(){
       presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*vComida, KPI.comida/100*semProm*shareCom) +
       presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*vLicor, KPI.licor/100*semProm*shareLic) +
       presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*semProm);
+    /* ---- Alerts ---- */
+    var alerts = [];
+    var lastDay = null;
+    ventas.forEach(function(r){ var f=String(r.fecha||'').substring(0,10); if (f && f<hoy && vTotal(r)>0) { if(!lastDay || f>lastDay.f) lastDay = {f:f, r:r}; } });
+    if (lastDay) {
+      var vv = parseFloat(lastDay.r.voids)||0, vt = vTotal(lastDay.r);
+      if (vv>250 && vt>0) alerts.push({sev:'bad', t:'High voids · '+lastDay.f, s:'Voids '+money(vv)+' ('+(vv/vt*100).toFixed(1)+'% of sales) on the last closed day'});
+      var dc = parseFloat(lastDay.r.descuentos)||0;
+      if (dc>0 && vt>0 && dc/vt>0.04) alerts.push({sev:'warn', t:'High discounts · '+lastDay.f, s:'Discounts & comps '+money(dc)+' ('+(dc/vt*100).toFixed(1)+'% of sales)'});
+      var wdI = (new Date(lastDay.f+'T12:00:00').getDay()+6)%7;
+      var expD = semProm*pesos[wdI];
+      if (expD>0 && vt < expD*0.7) alerts.push({sev:'warn', t:'Sales below pace · '+lastDay.f, s:'Sold '+money(vt)+' vs forecast '+money(expD)+' for that weekday'});
+    }
+    porPagar.forEach(function(r){ if (r.vence) { var dl = Math.round((new Date(r.vence+'T12:00:00') - new Date(hoy+'T12:00:00'))/86400000); if (dl<=3) alerts.push({sev: dl<0?'bad':'warn', t:(dl<0?'Overdue invoice':'Invoice due soon')+' · '+r.prov, s: money(r.monto)+' · due '+r.vence}); } });
+    if (vComida>0 && (gCat['Food Merchandise']||0) > KPI.comida/100*vComida) alerts.push({sev:'bad', t:'Food budget over', s:'Food purchases exceed 28% of food sales to date'});
+    if (vLicor>0 && (gCat['Liquor Merchandise']||0) > KPI.licor/100*vLicor) alerts.push({sev:'bad', t:'Liquor budget over', s:'Liquor purchases exceed 21% of liquor sales to date'});
+    var alertsHtml = alerts.length ? alerts.map(function(al){ return '<div class="row-item"><div><div class="t">'+al.t+'</div><div class="s">'+al.s+'</div></div><span class="badge '+(al.sev==='bad'?'bad':'warn')+'">'+(al.sev==='bad'?'action':'watch')+'</span></div>'; }).join('') : '<div class="row-item"><div><div class="t">All clear</div><div class="s">No alerts right now</div></div><span class="badge">ok</span></div>';
     el.innerHTML =
+      '<h2 class="st">Alerts</h2><div class="list" style="margin-bottom:14px">'+alertsHtml+'</div>' +
       '<h2 class="st">Week · '+mon.substring(5).replace('-','/')+' to '+sun.substring(5).replace('-','/')+'</h2>' +
       '<div class="cards">' +
         '<div class="card"><div class="lbl">Sales this week</div><div class="val money">'+money(vSem)+'</div>' +
@@ -628,6 +651,27 @@ var TABDEF = {
       {k:'notas',l:'Notes',t:'text'}
     ],
     row:function(r){ return {t:esc(r.nombre||''), s:esc(r.categoria||'')+(r.telefono?' · '+esc(r.telefono):''), badge:''}; } },
+  bitacora: { tab:'bitacora', title:'Manager logbook', singular:'log entry',
+    fields:[
+      {k:'fecha',l:'Date',t:'date',req:1},
+      {k:'turno',l:'Shift',t:'select',opts:['Opening','Midday','Closing']},
+      {k:'tipo',l:'Type',t:'select',opts:['Incident','86 Item','Maintenance','Staff','Guest','Cash','Other'],req:1},
+      {k:'titulo',l:'Title',t:'text',req:1},
+      {k:'detalle',l:'Detail',t:'text'},
+      {k:'responsable',l:'Logged by',t:'text'},
+      {k:'notas',l:'Notes',t:'text'}
+    ],
+    row:function(r){ var b = r.tipo==='Incident'?'<span class="badge bad">Incident</span>':(r.tipo?'<span class="badge warn">'+esc(r.tipo)+'</span>':'');
+      return {t:esc(r.titulo||''), s:esc(r.fecha||'')+(r.turno?' · '+esc(r.turno):'')+(r.detalle?' · '+esc(r.detalle):''), badge:b}; } },
+  costosfijos: { tab:'costosfijos', title:'Fixed costs', singular:'fixed cost',
+    fields:[
+      {k:'concepto',l:'Concept',t:'text',req:1},
+      {k:'montoMensual',l:'Monthly amount $',t:'number'},
+      {k:'activo',l:'Active',t:'select',opts:['Yes','No']},
+      {k:'notas',l:'Notes',t:'text'}
+    ],
+    row:function(r){ var m=parseFloat(r.montoMensual)||0;
+      return {t:esc(r.concepto||''), s:'Weekly '+money(m*12/52), amt:money(m)+'/mo', badge: String(r.activo).toLowerCase()==='no'?'<span class="badge bad">Inactive</span>':''}; } },
   act: { tab:'actividades', title:'Activities', singular:'activity',
     fields:[
       {k:'fecha',l:'Date',t:'date',req:1},
@@ -1059,6 +1103,58 @@ async function chkToggle(chkId, val){
 }
 RENDER['checks'] = renderChecks;
 
+/* ============ P&L + BREAK-EVEN ============ */
+var PL_VISTA = 'semana';
+function setPLVista(v){ PL_VISTA = v; renderPL(); }
+async function renderPL(){
+  var el = document.getElementById('v-pl');
+  el.innerHTML = '<h2 class="st">P&L · Profit & break-even</h2><div class="empty">Loading…</div>';
+  try {
+    var v = await getRows('ventas'), g = await getRows('gastos'), n = await getRows('nomina'), fx = await getRows('costosfijos');
+    var hoy = todayStr();
+    var a, b, lbl;
+    if (PL_VISTA==='semana'){ a = mondayOf(hoy); var d1 = new Date(a+'T12:00:00'); d1.setDate(d1.getDate()+6); b = dStr(d1); lbl = 'This week'; }
+    else if (PL_VISTA==='mes'){ a = hoy.substring(0,7)+'-01'; var d2 = new Date(a+'T12:00:00'); d2.setMonth(d2.getMonth()+1); d2.setDate(0); b = dStr(d2); lbl = 'This month'; }
+    else { var d0 = new Date(hoy.substring(0,7)+'-01T12:00:00'); d0.setDate(0); b = dStr(d0); a = b.substring(0,7)+'-01'; lbl = 'Last month'; }
+    var ag = aggRango(v, g, a, b);
+    var labor = laborRango(n, a, b);
+    var ventasT = ag.net.t || 0;
+    var cogs = (ag.gMC.t||0) + (ag.gML.t||0);
+    var otros = Math.max(0, (ag.gTot.t||0) - cogs);
+    var dias = Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00'))/86400000) + 1;
+    var fijoMes = 0;
+    fx.forEach(function(r){ if (String(r.activo).toLowerCase()!=='no') fijoMes += parseFloat(r.montoMensual)||0; });
+    var fijos = fijoMes * 12 / 52 / 7 * dias;
+    var costosVar = cogs + (labor||0) + otros;
+    var resultado = ventasT - costosVar - fijos;
+    var cm = ventasT > 0 ? (ventasT - costosVar)/ventasT : 0;
+    var be = (cm > 0 && fijoMes > 0) ? fijos/cm : null;
+    var dif = be != null ? ventasT - be : null;
+    function prow(l, val, sub, bold){
+      return '<div class="row-item"><div><div class="t"'+(bold?' style="font-weight:800"':'')+'>'+l+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div><div class="amt">'+val+'</div></div>';
+    }
+    var pctT = function(x){ return ventasT>0 ? (x/ventasT*100).toFixed(1)+'% of sales' : ''; };
+    var h = '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+      [['semana','Week'],['mes','Month'],['pasado','Last month']].map(function(x){ return '<button class="btn '+(PL_VISTA===x[0]?'':'sec')+'" style="margin:0;padding:9px" onclick="setPLVista(\''+x[0]+'\')">'+x[1]+'</button>'; }).join('') + '</div>';
+    h += '<div class="cards">' +
+      '<div class="card"><div class="lbl">Break-even · '+lbl+'</div><div class="val">'+(be!=null?money(be):'—')+'</div><div style="font-size:12px;color:var(--muted)">'+(dif!=null ? ('You are '+money(Math.abs(dif))+(dif>=0?' above':' BELOW')+' break-even') : 'Load the fixed costs below to calculate it')+'</div></div>' +
+      '<div class="card"><div class="lbl">Operating result</div><div class="val '+(resultado<0?'neg':'money')+'">'+money(resultado)+'</div><div style="font-size:12px;color:var(--muted)">'+a+' to '+b+'</div></div></div>';
+    h += '<div class="list" style="margin-bottom:14px">' +
+      prow('Net sales', money(ventasT), '', true) +
+      prow('Food purchases', money(ag.gMC.t||0), pctT(ag.gMC.t||0)+(ag.vC.t>0?' · '+(ag.gMC.t/ag.vC.t*100).toFixed(1)+'% of food sales':'')) +
+      prow('Liquor purchases', money(ag.gML.t||0), pctT(ag.gML.t||0)+(ag.vL.t>0?' · '+(ag.gML.t/ag.vL.t*100).toFixed(1)+'% of liquor sales':'')) +
+      prow('Labor', labor!=null?money(labor):'Not loaded', labor!=null?pctT(labor):'Payroll for this period is not in the app yet') +
+      prow('Other operating expenses', money(otros), pctT(otros)) +
+      prow('Fixed costs (prorated)', money(fijos), money(fijoMes)+'/month loaded') +
+      prow('Operating result', money(resultado), '', true) +
+    '</div>';
+    h += '<button class="btn sec" style="margin:0" onclick="go(\'costosfijos\')">Manage fixed costs</button>';
+    h += '<p style="color:#888;font-size:12px;margin-top:10px">Break-even = fixed costs ÷ contribution margin (sales − purchases − labor − other operating expenses). Purchase-based food cost only becomes real once every food invoice is loaded.</p>';
+    el.innerHTML = '<h2 class="st">P&L · Profit & break-even</h2>' + h;
+  } catch(e){ el.innerHTML = '<h2 class="st">P&L</h2><div class="empty">Error: '+esc(e.message)+'</div>'; }
+}
+RENDER['pl'] = renderPL;
+
 /* ================= FORM ================= */
 function fldHtml(f, val){
   val = val==null?'':val;
@@ -1111,7 +1207,7 @@ function leerFotoBase64(file){
   });
 }
 async function openForm(key, id, fechaPreset){
-  key = key || CUR; if (key==='dash') return;
+  key = key || CUR; if (key==='dash'||key==='pl') return;
   var def = TABDEF[key];
   var rec = {};
   if (id) {
