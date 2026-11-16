@@ -306,6 +306,8 @@ function dStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'
 function vTotal(r){ return (parseFloat(r.total)||0) || ((parseFloat(r.comedor)||0)+(parseFloat(r.paraLlevar)||0)+(parseFloat(r.delivery)||0)) || ((parseFloat(r.ventaComida)||0)+(parseFloat(r.ventaLicor)||0)); }
 function sum(a){ return a.reduce(function(x,y){ return x+(parseFloat(y)||0); },0); }
 function pct(n){ return (parseFloat(n)||0).toFixed(1)+'%'; }
+var dashOff = 0;
+function dashNav(d){ dashOff = d===0 ? 0 : dashOff + d; if (dashOff > 0) dashOff = 0; rDash(); }
 async function rDash(){
   var el = document.getElementById('v-dash');
   el.innerHTML = '<div class="empty">Loading…</div>';
@@ -320,6 +322,7 @@ async function rDash(){
     var now = new Date(), hoy = dStr(now);
     var ayer = dStr(new Date(now.getTime()-864e5));
     var mon = mondayOf(hoy);
+    if (dashOff) mon = dStr(new Date(new Date(mon+'T12:00:00').getTime() + dashOff*7*864e5));
     var monD = new Date(mon+'T12:00:00');
     var sun = dStr(new Date(monD.getTime()+6*864e5));
     var META = 54000;
@@ -341,6 +344,7 @@ async function rDash(){
     var avance = META>0 ? vSem/META*100 : 0;
     var falta = Math.max(0, META - vSem);
     var diasRest = Math.max(1, Math.round((new Date(sun+'T12:00:00') - new Date(hoy+'T12:00:00'))/864e5) + 1);
+    var esPasada = sun < hoy;
     var porDia = falta>0 ? falta/diasRest : 0;
     var maxV = Math.max.apply(null, dias.map(function(x){return x.v;}).concat([1]));
     var bars = dias.map(function(x){
@@ -400,6 +404,7 @@ async function rDash(){
       }).join('');
     /* ---- Plan de la semana (forecast) ---- */
     var KPI = { comida: 28, licor: 21, labor: 28 };
+    var PRON_BASE = 43000; /* Weekly forecast set by JC 2026-11-16 (was the historical average week) */
     var wdSum = [0,0,0,0,0,0,0], wdCnt = [0,0,0,0,0,0,0], histTot = 0, histCom = 0, histLic = 0;
     ventas.forEach(function(r){
       var f = String(r.fecha||'').substring(0,10); if (!f) return;
@@ -413,7 +418,7 @@ async function rDash(){
     var diasSem = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     var pesoRest = 0; dias.forEach(function(x,i){ if (x.f>=hoy) pesoRest += pesos[i]; });
     var planHtml = dias.map(function(x,i){
-      var metaD = META*pesos[i], pronD = semProm*pesos[i];
+      var metaD = META*pesos[i], pronD = PRON_BASE*pesos[i];
       var necD = (x.f>=hoy && falta>0 && pesoRest>0) ? falta*(pesos[i]/pesoRest) : 0;
       var real = x.f<hoy ? money(x.v) : (x.f===hoy ? money(x.v)+' (today)' : '—');
       var s = 'Goal '+money(metaD)+' · Forecast '+money(pronD)+(necD>0?' · Needed '+money(necD):'');
@@ -423,12 +428,13 @@ async function rDash(){
       if (gastado==null) return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">No data loaded this week · full-week budget '+money(totalSem)+'</div></div><span class="badge warn">no data</span></div>';
       var diff = gastado - permitido;
       var ok = diff<=0;
-      return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Spent '+money(gastado)+' · allowed to date '+money(permitido)+' · full week '+money(totalSem)+'</div></div><span class="badge '+(ok?'':'bad')+'">'+(ok?'on track':'over by '+money(diff))+'</span></div>';
+      return '<div class="row-item"><div><div class="t">'+nombre+'</div><div class="s">Spent '+money(gastado)+' · allowed to date '+money(permitido)+' · full week (actual pace) '+money(totalSem)+'</div></div><span class="badge '+(ok?'':'bad')+'">'+(ok?'on track':'over by '+money(diff))+'</span></div>';
     }
+    var pesoEl = 0; dias.forEach(function(x,i){ if (x.f<=hoy) pesoEl += pesos[i]; }); if (pesoEl<=0) pesoEl = 1;
     var presHtml =
-      presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*vComida, KPI.comida/100*semProm*shareCom) +
-      presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*vLicor, KPI.licor/100*semProm*shareLic) +
-      presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*semProm);
+      presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*vComida, KPI.comida/100*(vComida/pesoEl)) +
+      presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*vLicor, KPI.licor/100*(vLicor/pesoEl)) +
+      presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*(vSem/pesoEl));
     /* ---- Alerts ---- */
     var alerts = [];
     var lastDay = null;
@@ -439,15 +445,19 @@ async function rDash(){
       var dc = parseFloat(lastDay.r.descuentos)||0;
       if (dc>0 && vt>0 && dc/vt>0.04) alerts.push({sev:'warn', t:'High discounts · '+lastDay.f, s:'Discounts & comps '+money(dc)+' ('+(dc/vt*100).toFixed(1)+'% of sales)'});
       var wdI = (new Date(lastDay.f+'T12:00:00').getDay()+6)%7;
-      var expD = semProm*pesos[wdI];
+      var expD = PRON_BASE*pesos[wdI];
       if (expD>0 && vt < expD*0.7) alerts.push({sev:'warn', t:'Sales below pace · '+lastDay.f, s:'Sold '+money(vt)+' vs forecast '+money(expD)+' for that weekday'});
     }
     porPagar.forEach(function(r){ if (r.vence) { var dl = Math.round((new Date(r.vence+'T12:00:00') - new Date(hoy+'T12:00:00'))/86400000); if (dl<=3) alerts.push({sev: dl<0?'bad':'warn', t:(dl<0?'Overdue invoice':'Invoice due soon')+' · '+r.prov, s: money(r.monto)+' · due '+r.vence}); } });
     if (vComida>0 && (gCat['Food Merchandise']||0) > KPI.comida/100*vComida) alerts.push({sev:'bad', t:'Food budget over', s:'Food purchases exceed 28% of food sales to date'});
     if (vLicor>0 && (gCat['Liquor Merchandise']||0) > KPI.licor/100*vLicor) alerts.push({sev:'bad', t:'Liquor budget over', s:'Liquor purchases exceed 21% of liquor sales to date'});
     var alertsHtml = alerts.length ? alerts.map(function(al){ return '<div class="row-item"><div><div class="t">'+al.t+'</div><div class="s">'+al.s+'</div></div><span class="badge '+(al.sev==='bad'?'bad':'warn')+'">'+(al.sev==='bad'?'action':'watch')+'</span></div>'; }).join('') : '<div class="row-item"><div><div class="t">All clear</div><div class="s">No alerts right now</div></div><span class="badge">ok</span></div>';
+    var paceSub = esPasada ? (falta>0 ? 'Week closed · goal was '+money(META) : 'Weekly goal reached') : (falta>0 ? ('To go · sell '+money(porDia)+' per day over '+diasRest+' day(s)') : 'Weekly goal reached');
     el.innerHTML =
       '<h2 class="st">Alerts</h2><div class="list" style="margin-bottom:14px">'+alertsHtml+'</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><button class="btn sec" style="margin:0;padding:8px 12px" onclick="dashNav(-1)">‹ Prev week</button>' +
+      (dashOff<0 ? '<button class="btn sec" style="margin:0;padding:8px 12px" onclick="dashNav(1)">Next week ›</button><button class="btn" style="margin:0;padding:8px 12px" onclick="dashNav(0)">This week</button>' : '<span style="font-size:12px;color:var(--muted)">Viewing this week</span>') +
+      '</div>' +
       '<h2 class="st">Week · '+mon.substring(5).replace('-','/')+' to '+sun.substring(5).replace('-','/')+'</h2>' +
       '<div class="cards">' +
         '<div class="card"><div class="lbl">Sales this week</div><div class="val money">'+money(vSem)+'</div>' +
@@ -459,7 +469,7 @@ async function rDash(){
           '<div style="font-size:12px;color:var(--muted)">'+(labor!=null ? ('Labor '+money(labor)+(laborPct!=null?' ('+laborPct.toFixed(1)+'% de ventas)':'')) : 'No labor yet: this week\'s payroll has not been loaded to the app')+'</div></div>' +
       '</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Pace to goal</div><div class="val">'+(falta>0?money(falta):'✓')+'</div><div style="font-size:12px;color:var(--muted)">'+(falta>0 ? ('To go · sell '+money(porDia)+' per day over '+diasRest+' day(s)') : 'Weekly goal reached')+'</div></div>' +
+        '<div class="card"><div class="lbl">Pace to goal</div><div class="val">'+(falta>0?money(falta):'✓')+'</div><div style="font-size:12px;color:var(--muted)">'+paceSub+'</div></div>' +
         '<div class="card"><div class="lbl">Accounts payable</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pending</div></div>' +
       '</div>' +
       '<div class="cards">' +
@@ -467,7 +477,7 @@ async function rDash(){
         '<div class="card"><div class="lbl">Liquor cost</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 21% · Liquor purchases '+money(gCat['Liquor Merchandise']||0)+' ÷ liquor sales '+money(vLicor)+'</div></div>' +
       '</div>' +
       '<h2 class="st">Daily sales · week</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
-      '<h2 class="st">Weekly plan · forecast '+money(semProm)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
+      '<h2 class="st">Weekly plan · forecast '+money(PRON_BASE)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
       '<h2 class="st">Spending budget to date</h2><div class="list" style="margin-bottom:14px">'+presHtml+'</div>' +
       '<h2 class="st">Expenses this week · '+money(gTot)+'</h2><div class="list" style="margin-bottom:14px">'+gHtml+'</div>' +
       '<h2 class="st">Accounts payable · '+money(ppTot)+'</h2><div class="list" style="margin-bottom:14px">'+ppHtml+'</div>' +
@@ -812,7 +822,7 @@ var DIA_SEL = todayStr();
 var SEMANA_SEL = '';
 var MES_SEL = todayStr().substring(0,7);
 var DIA_INIT = false;
-function mondayOf(d){ var x=new Date(d); var day=(x.getDay()+6)%7; x.setHours(12,0,0,0); x.setDate(x.getDate()-day); return dStr(x); }
+function mondayOf(d){ var p=String(d).substring(0,10).split('-'); var x=new Date(+p[0],(+p[1])-1,+p[2]); var day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); return dStr(x); }
 function setVentasVista(v){ VENTAS_VISTA = v; renderVentas(); }
 var DNAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var MNAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
