@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Costa Pacífica · CP1604</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a5f5e">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Costa Pacifica">
 <style>
 :root{
   --teal:#0e7c7b; --teal-d:#0a5f5e; --sand:#f7f3ea; --ink:#1e2a32;
@@ -103,6 +111,16 @@ table.rep{width:100%; border-collapse:collapse; font-size:13px; background:#fff;
 table.rep th{background:var(--teal-d); color:#fff; padding:8px 6px; text-align:left; font-size:11px; text-transform:uppercase;}
 table.rep td{padding:8px 6px; border-bottom:1px solid var(--line);}
 table.rep tr.tot td{font-weight:700; background:#eef6f5;}
+.seg{display:flex; gap:6px; flex:none;}
+.segbtn{padding:7px 11px; border:1px solid var(--line); background:#fff; border-radius:8px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer;}
+.segbtn.on{background:var(--teal); color:#fff; border-color:var(--teal);}
+.segbtn.onf{background:var(--red); color:#fff; border-color:var(--red);}
+.chkrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #f2efe6;}
+.chkrow:last-child{border-bottom:none;}
+.chkrow .cl{font-size:14px; flex:1;}
+.chkbox{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 4px;}
+.chkchip{padding:7px 11px; border:1px solid var(--line); background:#fff; border-radius:20px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer;}
+.chkchip.on{background:var(--teal); color:#fff; border-color:var(--teal);}
 </style>
 </head>
 <body>
@@ -151,7 +169,7 @@ table.rep tr.tot td{font-weight:700; background:#eef6f5;}
 
 <div id="appView" style="display:none">
   <header class="top">
-    <h1>Costa Pacífica</h1>
+    <h1><img src="icon-192.png" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-8px;margin-right:8px">Costa Pacífica</h1>
     <div class="sub" id="hdrSub">CP1604</div>
   </header>
 
@@ -1076,6 +1094,11 @@ async function renderChecks(){
   var el = document.getElementById('v-checks');
   var hoy = todayStr();
   el.innerHTML = '<h2 class="st">Checklists · '+hoy+'</h2>'
+    +'<div class="card" style="margin-bottom:12px"><div class="lbl">Daily forms · filled here, saved as PDF</div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn" style="margin:0;flex:1" onclick="openDailyForm(\'FOH\')">FOH · Pre-Shift</button>'
+    +'<button class="btn" style="margin:0;flex:1" onclick="openDailyForm(\'BOH\')">BOH · Inspection</button></div>'
+    +'<div id="frmList" style="margin-top:10px"><div style="font-size:12px;color:var(--muted)">Loading saved forms…</div></div></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
     +[['FOH','<svg class="ic"><use href="#i-utensils"/></svg> FOH'],['BOH','<svg class="ic"><use href="#i-flame"/></svg> BOH']].map(function(v){ return '<button class="btn '+(CHK_AREA===v[0]?'':'sec')+'" style="margin:0;padding:9px;flex:1" onclick="setChk(\''+v[0]+'\')">'+v[1]+'</button>'; }).join('')+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
@@ -1101,6 +1124,7 @@ async function renderChecks(){
           +(l&&l.responsable?'<div class="s">'+esc(l.responsable)+'</div>':'')+'</div></div>';
       }).join('') || '<div class="empty">No tasks.</div>';
   } catch(e){ document.getElementById('chkList').innerHTML = '<div class="empty">Error: '+esc(e.message)+'</div>'; }
+  loadFormsList();
 }
 async function chkToggle(chkId, val){
   var hoy = todayStr();
@@ -1398,6 +1422,294 @@ async function delRec(key, id){
     closeModal();
     if (['personal','training','training_progreso','evaluaciones','puestos'].indexOf(key)>=0) renderPersonal(); else if (key==='checklists') renderChecks(); else if (key==='ventas') renderVentas(); else renderList(key);
   } catch(e){ alert('Error: '+e.message); }
+}
+</script>
+<script>
+/* ============ DAILY FORMS — FOH Pre-Shift / BOH Daily Inspection ============
+   Se llenan en el app; al guardar se genera un PDF (jsPDF), se sube a la
+   carpeta "Checklists Costa Pacifica CP1604" de Drive (acción uploadFormPdf)
+   y queda el registro en la pestaña Formularios con el link al PDF. */
+var FRM = null;
+var FOH_FOCUS = ['Greeting Guests','Steps of Service','Table Touches','Cleanliness','Suggestive Selling','Teamwork','Dessert Pitch','Wine/Cocktail Knowledge'];
+var BOH_GENERAL = [
+  'Back dock & rear entry clean, free of cigarette butts and debris',
+  'Energy: A/C comfortable, no defrost needed, water savers on sinks',
+  'Ambience: music selection & volume right for the time of day',
+  'TVs on a sports game',
+  'Uniforms inspected: 2 FOH + 2 BOH, clean, pressed, to spec',
+  'Both bathrooms inspected: clean, dry, no odors, well stocked',
+  'Bartender test witnessed',
+  'Expo: tickets flowing correctly, oldest checks first',
+  'Fryers at 350°F and filtered today; unused fryers off',
+  'All trash taken to the dumpster; no trash piled up'
+];
+var BOH_TEMPS = [
+  { k:'tColdLine', l:'Cold line', test:function(v){ return v>41; }, tgt:'41°F or less' },
+  { k:'tFreezer', l:'Freezer', test:function(v){ return v>41; }, tgt:'41°F or less' },
+  { k:'tFridge', l:'Kitchen fridge', test:function(v){ return v>41; }, tgt:'41°F or less' },
+  { k:'tColdPan', l:'Cold pan', test:function(v){ return v>41; }, tgt:'41°F or less' },
+  { k:'tHotLine', l:'Hot line', test:function(v){ return v<135; }, tgt:'135°F or more' },
+  { k:'tKeg', l:'Keg cooler', test:function(v){ return v<36 || v>39; }, tgt:'36–39°F' }
+];
+var BOH_SAFETY = [
+  'All sinks stocked: soap, towels, signs & sanitizer (BOH)',
+  'Dishwasher sanitizer test correct (50 PPM), at least twice a day',
+  'All food covered and stored 6" off the floor (incl. freezer)',
+  'All food & spray bottles labeled correctly',
+  'Round thermometers mounted & legible in every cooler',
+  'Cold food at 41°F or below in all reach-ins & walk-ins',
+  'Hot food at 135°F or above',
+  'No open drinks anywhere in BOH or Expo',
+  'Proper utensils in place, handles up (no bowls or cups as scoops)',
+  'Slicer & can opener clean and sanitized, no food build-up',
+  'Food stacked in the correct order (cheese, vegetables, cooked, raw seafood, fish, beef, pork, burgers, chicken)',
+  'No rust, mold or fungus in ice machines or ice bins',
+  'Soda guns & holsters clean, with drain hose connected'
+];
+var BOH_FINAL = [
+  'Knives & tongs stored correctly',
+  'Sanitizer buckets on both lines: clean and tested',
+  'Fire extinguisher tags current on all units',
+  'Cutting boards clean and in good condition',
+  'All bulk food containers labeled correctly',
+  'Correct thawing procedures in place'
+];
+function segSet(b){
+  FRM.data[b.dataset.k] = b.dataset.v;
+  var p = b.parentNode;
+  p.querySelectorAll('.segbtn').forEach(function(x){
+    x.classList.remove('on','onf');
+    if (x===b) x.classList.add(b.dataset.v==='Fail' ? 'onf' : 'on');
+  });
+}
+function segHtml(k){
+  return '<div class="seg">' + ['Pass','Fail','N/A'].map(function(o){
+    return '<button type="button" class="segbtn" data-k="'+k+'" data-v="'+o+'" onclick="segSet(this)">'+o+'</button>';
+  }).join('') + '</div>';
+}
+function chipToggle(b){
+  var k = b.dataset.k;
+  FRM.data[k] = !FRM.data[k];
+  b.classList.toggle('on', !!FRM.data[k]);
+}
+function openDailyForm(tipo){
+  FRM = { tipo: tipo, data: {} };
+  var hoy = todayStr();
+  var me = (ME && (ME.nombre || ME.username)) || '';
+  var h = '';
+  if (tipo==='FOH') {
+    h = '<h3>FOH · Pre-Shift Report</h3><form class="sheet" onsubmit="return saveDailyForm(event,\'FOH\')">'
+    + '<label>Date</label><input id="df_fecha" type="date" value="'+hoy+'" required>'
+    + '<label>Shift</label><select id="df_turno"><option>Lunch</option><option>Dinner</option><option>Late Night</option></select>'
+    + '<label>Manager</label><input id="df_responsable" type="text" value="'+esc(me)+'" required>'
+    + '<h2 class="st" style="margin-top:16px">Overview</h2>'
+    + '<label>Today\'s focus / goal</label><input id="df_focus" type="text">'
+    + '<label>Expected covers</label><input id="df_covers" type="number" step="1">'
+    + '<label>Sales goal $</label><input id="df_salesGoal" type="number" step="0.01">'
+    + '<label>Weather / traffic impact</label><select id="df_weather"><option>Normal</option><option>Busy</option><option>Slow</option><option>Weather concern</option></select>'
+    + '<label>Weather note</label><input id="df_weatherNote" type="text">'
+    + '<h2 class="st" style="margin-top:16px">Reservations & events</h2>'
+    + [0,1,2,3,4].map(function(i){
+        return '<div style="display:flex;gap:6px;margin-bottom:6px">'
+        + '<input id="df_r'+i+'t" type="text" placeholder="Time" style="flex:0 0 74px">'
+        + '<input id="df_r'+i+'n" type="text" placeholder="Party name" style="flex:1">'
+        + '<input id="df_r'+i+'g" type="number" step="1" placeholder="# guests" style="flex:0 0 74px">'
+        + '<input id="df_r'+i+'l" type="text" placeholder="Location" style="flex:1"></div>'
+        + '<input id="df_r'+i+'no" type="text" placeholder="Notes (VIP / birthday / special request)" style="margin-bottom:8px">';
+      }).join('')
+    + '<h2 class="st" style="margin-top:16px">Menu updates</h2>'
+    + '<label>86\'d items</label><input id="df_items86" type="text">'
+    + '<label>Features / specials</label><input id="df_specials" type="text">'
+    + '<label>Suggested pairings / upsell focus</label><input id="df_upsell" type="text">'
+    + '<h2 class="st" style="margin-top:16px">Service focus / training topic</h2>'
+    + '<div class="chkbox">' + FOH_FOCUS.map(function(f,i){ return '<button type="button" class="chkchip" data-k="focus'+i+'" onclick="chipToggle(this)">'+esc(f)+'</button>'; }).join('') + '</div>'
+    + '<label>Service notes</label><input id="df_serviceNotes" type="text">'
+    + '<h2 class="st" style="margin-top:16px">Announcements / reminders</h2>'
+    + '<textarea id="df_announcements"></textarea>'
+    + '<h2 class="st" style="margin-top:16px">Recognition & motivation</h2>'
+    + '<label>Employee highlights / shoutouts</label><input id="df_shoutouts" type="text">'
+    + '<label>Quote or message for the team</label><input id="df_quote" type="text">'
+    + '<label>Manager signature</label><input id="df_signature" type="text" value="'+esc(me)+'">'
+    + '<button class="btn" type="submit" id="dfSaveBtn">Save · generate PDF</button></form>';
+  } else {
+    var segBlock = function(title, items, prefix){
+      return '<h2 class="st" style="margin-top:16px">'+title+'</h2>' + items.map(function(it, i){
+        return '<div class="chkrow"><div class="cl">'+esc(it)+'</div>'+segHtml(prefix+(i+1))+'</div>';
+      }).join('');
+    };
+    h = '<h3>BOH · Daily Inspection Checklist</h3><form class="sheet" onsubmit="return saveDailyForm(event,\'BOH\')">'
+    + '<label>Date</label><input id="df_fecha" type="date" value="'+hoy+'" required>'
+    + '<label>Inspection</label><select id="df_turno"><option>AM/KM · 10am–1pm</option><option>PM · FOH 3pm–close</option></select>'
+    + '<label>Inspector</label><input id="df_responsable" type="text" value="'+esc(me)+'" required>'
+    + '<label>Time</label><input id="df_time" type="text" placeholder="e.g. 11:45 AM">'
+    + segBlock('General inspection', BOH_GENERAL, 'g')
+    + '<h2 class="st" style="margin-top:16px">Temperatures (°F)</h2>'
+    + BOH_TEMPS.map(function(t){
+        return '<div class="chkrow"><div class="cl">'+esc(t.l)+' <span style="color:var(--muted);font-size:12px">(target '+esc(t.tgt)+')</span></div>'
+        + '<input id="df_'+t.k+'" type="number" step="0.1" style="width:96px;padding:9px;font-size:15px;border:1px solid var(--line);border-radius:8px" placeholder="°F"></div>';
+      }).join('')
+    + segBlock('Food safety · most common DPS violations', BOH_SAFETY, 's')
+    + segBlock('Final checks', BOH_FINAL, 'f')
+    + '<label>Equipment needing repair</label><textarea id="df_repair"></textarea>'
+    + '<label>Action taken</label><textarea id="df_actionTaken"></textarea>'
+    + '<label>Inspector signature</label><input id="df_signature" type="text" value="'+esc(me)+'">'
+    + '<button class="btn" type="submit" id="dfSaveBtn">Save · generate PDF</button></form>';
+  }
+  openModal(h);
+}
+function dfVal(k){ var el = document.getElementById('df_'+k); return el ? el.value.trim() : ''; }
+function collectDailyForm(tipo){
+  var d = { fecha: dfVal('fecha') || todayStr(), turno: dfVal('turno'), responsable: dfVal('responsable'), signature: dfVal('signature') };
+  var secciones = [];
+  if (tipo==='FOH') {
+    d.focus = dfVal('focus'); d.covers = dfVal('covers'); d.salesGoal = dfVal('salesGoal');
+    d.weather = dfVal('weather'); d.weatherNote = dfVal('weatherNote');
+    d.reservations = [];
+    for (var i=0;i<5;i++){
+      var r = { time: dfVal('r'+i+'t'), name: dfVal('r'+i+'n'), guests: dfVal('r'+i+'g'), location: dfVal('r'+i+'l'), notes: dfVal('r'+i+'no') };
+      if (r.time || r.name || r.guests || r.location || r.notes) d.reservations.push(r);
+    }
+    d.items86 = dfVal('items86'); d.specials = dfVal('specials'); d.upsell = dfVal('upsell');
+    d.serviceFocus = FOH_FOCUS.filter(function(f, ix){ return FRM.data['focus'+ix]; });
+    d.serviceNotes = dfVal('serviceNotes'); d.announcements = dfVal('announcements');
+    d.shoutouts = dfVal('shoutouts'); d.quote = dfVal('quote');
+    secciones = [
+      { titulo:'Overview', items:[
+        { l:'Today\'s focus / goal', v:d.focus }, { l:'Expected covers', v:d.covers },
+        { l:'Sales goal', v: d.salesGoal ? '$'+d.salesGoal : '' },
+        { l:'Weather / traffic', v: d.weather + (d.weatherNote ? ' — '+d.weatherNote : '') } ] },
+      { titulo:'Reservations & events', items: d.reservations.length ? d.reservations.map(function(r){
+          return { l: (r.time||'') + (r.name ? ' · '+r.name : ''), v: [r.guests ? r.guests+' guests' : '', r.location, r.notes].filter(Boolean).join(' · ') };
+        }) : [ { l:'Reservations', v:'None' } ] },
+      { titulo:'Menu updates', items:[
+        { l:'86\'d items', v:d.items86 }, { l:'Features / specials', v:d.specials }, { l:'Pairings / upsell focus', v:d.upsell } ] },
+      { titulo:'Service focus / training', items:[
+        { l:'Focus', v: d.serviceFocus.join(', ') }, { l:'Notes', v:d.serviceNotes } ] },
+      { titulo:'Announcements / reminders', items:[ { l:'', v:d.announcements } ] },
+      { titulo:'Recognition & motivation', items:[
+        { l:'Shoutouts', v:d.shoutouts }, { l:'Quote for the team', v:d.quote } ] }
+    ];
+  } else {
+    d.time = dfVal('time');
+    var segItems = function(items, prefix){
+      return items.map(function(it, i){ return { l: it, v: FRM.data[prefix+(i+1)] || '' }; });
+    };
+    d.general = segItems(BOH_GENERAL, 'g');
+    d.safety = segItems(BOH_SAFETY, 's');
+    d.finalChecks = segItems(BOH_FINAL, 'f');
+    d.temps = BOH_TEMPS.map(function(t){
+      var raw = dfVal(t.k); var v = raw===''? null : parseFloat(raw);
+      return { l: t.l, v: raw, out: (v!=null && !isNaN(v)) ? t.test(v) : false, tgt: t.tgt };
+    });
+    d.repair = dfVal('repair'); d.actionTaken = dfVal('actionTaken');
+    secciones = [
+      { titulo:'General inspection', checks: d.general },
+      { titulo:'Temperatures', temps: d.temps },
+      { titulo:'Food safety · DPS', checks: d.safety },
+      { titulo:'Final checks', checks: d.finalChecks },
+      { titulo:'Repairs', items:[ { l:'Equipment needing repair', v:d.repair }, { l:'Action taken', v:d.actionTaken } ] }
+    ];
+  }
+  d.secciones = secciones;
+  return d;
+}
+function buildFormPdf(tipo, d){
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  var doc = new window.jspdf.jsPDF({ unit:'mm', format:'letter' });
+  var W = 215.9, M = 14, y = 0;
+  doc.setFillColor(10, 95, 94); doc.rect(0, 0, W, 24, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.text('COSTA PACIFICA', M, 11);
+  doc.setFontSize(11.5); doc.setFont('helvetica','normal');
+  doc.text(tipo==='FOH' ? 'FOH · Pre-Shift Report' : 'BOH · Daily Inspection Checklist', M, 18.5);
+  doc.setFontSize(10.5);
+  var meta = d.fecha + '  ·  ' + (d.turno||'') + '  ·  ' + (tipo==='FOH' ? 'Manager: ' : 'Inspector: ') + (d.responsable||'') + (d.time ? '  ·  ' + d.time : '');
+  doc.text(meta, W - M, 18.5, { align:'right' });
+  doc.setTextColor(30,42,50);
+  y = 32;
+  function need(h){ if (y + h > 271) { doc.addPage(); y = 16; } }
+  function wrap(txt, size){ doc.setFontSize(size||10.5); return doc.splitTextToSize(String(txt||''), W - M*2); }
+  d.secciones.forEach(function(sec){
+    need(10);
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(10,95,94);
+    doc.text(sec.titulo.toUpperCase(), M, y); y += 2.2;
+    doc.setDrawColor(229,224,211); doc.line(M, y, W - M, y); y += 5.4;
+    doc.setTextColor(30,42,50); doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+    (sec.items||[]).forEach(function(it){
+      var txt = (it.l ? it.l + ': ' : '') + (it.v || '—');
+      var lines = wrap(txt);
+      need(lines.length * 4.9 + 1.5);
+      doc.text(lines, M, y); y += lines.length * 4.9 + 1.5;
+    });
+    (sec.checks||[]).forEach(function(it){
+      var sym = it.v==='Pass' ? '✓' : (it.v==='Fail' ? '✗ FAIL —' : (it.v==='N/A' ? '– N/A —' : '○ —'));
+      var lines = wrap(sym + '  ' + it.l);
+      need(lines.length * 4.9 + 1.5);
+      if (it.v==='Fail') doc.setTextColor(192,57,43);
+      doc.text(lines, M, y);
+      doc.setTextColor(30,42,50);
+      y += lines.length * 4.9 + 1.5;
+    });
+    (sec.temps||[]).forEach(function(t){
+      var txt = t.l + ': ' + (t.v===''||t.v==null ? '—' : t.v + '°F') + '  (target ' + t.tgt + ')' + (t.out ? '  ⚠ OUT OF RANGE' : '');
+      var lines = wrap(txt);
+      need(lines.length * 4.9 + 1.5);
+      if (t.out) doc.setTextColor(192,57,43);
+      doc.text(lines, M, y);
+      doc.setTextColor(30,42,50);
+      y += lines.length * 4.9 + 1.5;
+    });
+    y += 3.5;
+  });
+  need(12);
+  doc.setFontSize(10.5);
+  doc.text('Signature: ' + (d.signature || d.responsable || ''), M, y); y += 6;
+  doc.setFontSize(8.5); doc.setTextColor(107,125,138);
+  doc.text('Saved from the Costa Pacifica app · CP1604 · ' + new Date().toLocaleString('en-US'), M, y);
+  return doc.output('datauristring');
+}
+async function saveDailyForm(ev, tipo){
+  ev.preventDefault();
+  var btn = document.getElementById('dfSaveBtn');
+  try {
+    var d = collectDailyForm(tipo);
+    if (!d.responsable) { alert('Add the name of the person in charge.'); return false; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating PDF…'; }
+    var pdfData = buildFormPdf(tipo, d);
+    if (btn) btn.textContent = 'Uploading PDF…';
+    var up = await api('uploadFormPdf', { data: pdfData, mimeType: 'application/pdf', fecha: d.fecha, tipo: tipo==='FOH' ? 'FOH-PreShift' : 'BOH-Inspection', responsable: d.responsable }, true);
+    if (!up.ok || !up.url) throw new Error(up.error || 'The server did not return a link');
+    var rec = { fecha: "'" + d.fecha, sucursal: SUC, tipo: tipo==='FOH' ? 'FOH Pre-Shift' : 'BOH Inspection', turno: d.turno || '', responsable: d.responsable, datos: JSON.stringify(d), pdfUrl: up.url, creadoEn: new Date().toISOString() };
+    var cr = await api('create', { tab: 'formularios', record: rec }, true);
+    if (!cr.ok) throw new Error(cr.error);
+    closeModal();
+    openModal('<h3>✓ Form saved</h3><p style="font-size:14px">The PDF is filed in Drive (Checklists folder) and the record is in the app.</p>'
+      + '<a class="btn" style="text-decoration:none;text-align:center" href="'+esc(up.url)+'" target="_blank" rel="noopener">View PDF</a>'
+      + '<button class="btn sec" onclick="closeModal()">Close</button>');
+    renderChecks();
+  } catch(e) {
+    alert('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save · generate PDF'; }
+  }
+  return false;
+}
+async function loadFormsList(){
+  var box = document.getElementById('frmList');
+  if (!box) return;
+  try {
+    var r = await api('list', { tab: 'formularios' });
+    var rows = (r.rows||[]).slice().sort(function(a,b){ return String(b.creadoEn||b.fecha) < String(a.creadoEn||a.fecha) ? -1 : 1; }).slice(0, 8);
+    if (!rows.length) { box.innerHTML = '<div style="font-size:12px;color:var(--muted)">No forms saved yet — today\'s will appear here.</div>'; return; }
+    box.innerHTML = rows.map(function(x){
+      var f = String(x.fecha||'').replace(/^'/,'').substring(0,10);
+      return '<div class="row-item" style="padding:8px 0;border-bottom:1px solid #f2efe6"><div><div class="t" style="font-size:13.5px">'+esc(x.tipo||'Form')+'</div>'
+        + '<div class="s">'+esc(f)+(x.turno ? ' · '+esc(x.turno) : '')+(x.responsable ? ' · '+esc(x.responsable) : '')+'</div></div>'
+        + (x.pdfUrl ? '<a href="'+esc(x.pdfUrl)+'" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge">PDF</span></a>' : '<span class="badge warn">no PDF</span>')
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--muted)">Saved forms could not be loaded.</div>';
+  }
 }
 </script>
 </body>
