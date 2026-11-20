@@ -346,7 +346,7 @@ async function rDash(){
     var META = 54000;
     function enSem(f){ return f>=mon && f<=sun; }
     /* ---- Ventas de la semana ---- */
-    var vSem=0, vComida=0, vLicor=0, invSem=0, vHoy=0, vAyer=0;
+    var vSem=0, vComida=0, vLicor=0, vCerveza=0, vVino=0, vNA=0, invSem=0, vHoy=0, vAyer=0;
     var dias = [];
     for (var i=0;i<7;i++){ var dt = new Date(monD.getTime()+i*864e5); dias.push({ f: dStr(dt), dw: 'M T W T F S S'[i*2]||'', v: 0 }); }
     ventas.forEach(function(r){
@@ -354,7 +354,7 @@ async function rDash(){
       if (f===hoy) vHoy += t;
       if (f===ayer) vAyer += t;
       if (enSem(f)){
-        vSem += t; vComida += parseFloat(r.ventaComida)||0; vLicor += parseFloat(r.ventaLicor)||0; invSem += parseFloat(r.invitados)||0;
+        vSem += t; vComida += parseFloat(r.ventaComida)||0; vLicor += parseFloat(r.ventaLicor)||0; vCerveza += parseFloat(r.ventaCerveza)||0; vVino += parseFloat(r.ventaVino)||0; vNA += parseFloat(r.ventaNA)||0; invSem += parseFloat(r.invitados)||0;
         for (var i=0;i<7;i++) if (dias[i].f===f) dias[i].v += t;
       }
     });
@@ -382,8 +382,10 @@ async function rDash(){
       var pt = gTot>0 ? Math.round(gCat[c]/gTot*100) : 0;
       return '<div class="row-item"><div><div class="t">'+esc(c)+'</div><div style="height:6px;background:#eee;border-radius:3px;margin-top:4px;width:140px"><div style="height:6px;width:'+pt+'%;background:var(--teal);border-radius:3px"></div></div></div><div style="text-align:right"><div class="amt">'+money(gCat[c])+'</div><div class="s">'+ps.toFixed(1)+'% de ventas</div></div></div>';
     }).join('') || '<div class="empty">Sin gastos esta semana</div>';
-    var costoComida = vComida>0 ? (gCat['Food Merchandise']||0)/vComida*100 : null;
-    var costoLicor = vLicor>0 ? (gCat['Liquor Merchandise']||0)/vLicor*100 : null;
+    var baseComida = vComida + vNA; /* Company rule (JC 2026-11-20): food cost vs food + N/A beverage sales */
+    var baseLicor = vLicor + vCerveza + vVino; /* Company rule (JC 2026-11-20): liquor cost vs liquor + beer + wine sales */
+    var costoComida = baseComida>0 ? (gCat['Food Merchandise']||0)/baseComida*100 : null;
+    var costoLicor = baseLicor>0 ? (gCat['Liquor Merchandise']||0)/baseLicor*100 : null;
     /* ---- Labor (payroll loaded in the app) ---- */
     var nomSem = nom.filter(function(r){ var f=String(r.periodoInicio||'').substring(0,10); return enSem(f); });
     var labor = nomSem.length ? nomSem.reduce(function(a,r){return a+(parseFloat(r.neto)||0);},0) : null;
@@ -450,8 +452,8 @@ async function rDash(){
     }
     var pesoEl = 0; dias.forEach(function(x,i){ if (x.f<=hoy) pesoEl += pesos[i]; }); if (pesoEl<=0) pesoEl = 1;
     var presHtml =
-      presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*vComida, KPI.comida/100*(vComida/pesoEl)) +
-      presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*vLicor, KPI.licor/100*(vLicor/pesoEl)) +
+      presRow('Food · 28%', gCat['Food Merchandise']||0, KPI.comida/100*baseComida, KPI.comida/100*(baseComida/pesoEl)) +
+      presRow('Liquor · 21%', gCat['Liquor Merchandise']||0, KPI.licor/100*baseLicor, KPI.licor/100*(baseLicor/pesoEl)) +
       presRow('Labor · 28%', labor, KPI.labor/100*vSem, KPI.labor/100*(vSem/pesoEl));
     /* ---- Alerts ---- */
     var alerts = [];
@@ -467,8 +469,8 @@ async function rDash(){
       if (expD>0 && vt < expD*0.7) alerts.push({sev:'warn', t:'Sales below pace · '+lastDay.f, s:'Sold '+money(vt)+' vs forecast '+money(expD)+' for that weekday'});
     }
     porPagar.forEach(function(r){ if (r.vence) { var dl = Math.round((new Date(r.vence+'T12:00:00') - new Date(hoy+'T12:00:00'))/86400000); if (dl<=3) alerts.push({sev: dl<0?'bad':'warn', t:(dl<0?'Overdue invoice':'Invoice due soon')+' · '+r.prov, s: money(r.monto)+' · due '+r.vence}); } });
-    if (vComida>0 && (gCat['Food Merchandise']||0) > KPI.comida/100*vComida) alerts.push({sev:'bad', t:'Food budget over', s:'Food purchases exceed 28% of food sales to date'});
-    if (vLicor>0 && (gCat['Liquor Merchandise']||0) > KPI.licor/100*vLicor) alerts.push({sev:'bad', t:'Liquor budget over', s:'Liquor purchases exceed 21% of liquor sales to date'});
+    if (baseComida>0 && (gCat['Food Merchandise']||0) > KPI.comida/100*baseComida) alerts.push({sev:'bad', t:'Food budget over', s:'Food purchases exceed 28% of food + N/A beverage sales to date'});
+    if (baseLicor>0 && (gCat['Liquor Merchandise']||0) > KPI.licor/100*baseLicor) alerts.push({sev:'bad', t:'Liquor budget over', s:'Liquor purchases exceed 21% of bar sales (liquor + beer + wine) to date'});
     var alertsHtml = alerts.length ? alerts.map(function(al){ return '<div class="row-item"><div><div class="t">'+al.t+'</div><div class="s">'+al.s+'</div></div><span class="badge '+(al.sev==='bad'?'bad':'warn')+'">'+(al.sev==='bad'?'action':'watch')+'</span></div>'; }).join('') : '<div class="row-item"><div><div class="t">All clear</div><div class="s">No alerts right now</div></div><span class="badge">ok</span></div>';
     var paceSub = esPasada ? (falta>0 ? 'Week closed · goal was '+money(META) : 'Weekly goal reached') : (falta>0 ? ('To go · sell '+money(porDia)+' per day over '+diasRest+' day(s)') : 'Weekly goal reached');
     el.innerHTML =
@@ -491,8 +493,8 @@ async function rDash(){
         '<div class="card"><div class="lbl">Accounts payable</div><div class="val '+(ppTot>0?'neg':'money')+'">'+money(ppTot)+'</div><div style="font-size:12px;color:var(--muted)">'+porPagar.length+' invoice(s) pending</div></div>' +
       '</div>' +
       '<div class="cards">' +
-        '<div class="card"><div class="lbl">Food cost</div><div class="val '+((costoComida!=null&&costoComida>28)?'neg':'')+'">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 28% · Food purchases '+money(gCat['Food Merchandise']||0)+' ÷ food sales '+money(vComida)+'</div></div>' +
-        '<div class="card"><div class="lbl">Liquor cost</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 21% · Liquor purchases '+money(gCat['Liquor Merchandise']||0)+' ÷ liquor sales '+money(vLicor)+'</div></div>' +
+        '<div class="card"><div class="lbl">Food cost</div><div class="val '+((costoComida!=null&&costoComida>28)?'neg':'')+'">'+(costoComida!=null?costoComida.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 28% · Food purchases '+money(gCat['Food Merchandise']||0)+' ÷ food + N/A sales '+money(baseComida)+'</div></div>' +
+        '<div class="card"><div class="lbl">Liquor cost</div><div class="val '+((costoLicor!=null&&costoLicor>21)?'neg':'')+'">'+(costoLicor!=null?costoLicor.toFixed(1)+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">Goal 21% · Liquor purchases '+money(gCat['Liquor Merchandise']||0)+' ÷ bar sales '+money(baseLicor)+'</div></div>' +
       '</div>' +
       '<h2 class="st">Daily sales · week</h2><div class="card" style="margin-bottom:14px"><div style="display:flex;gap:4px">'+bars+'</div></div>' +
       '<h2 class="st">Weekly plan · forecast '+money(PRON_BASE)+'</h2><div class="list" style="margin-bottom:14px">'+planHtml+'</div>' +
@@ -857,6 +859,7 @@ function aggRango(v,g,a,b){
   var ag={n:vv.length};
   var net=0; vv.forEach(function(r){ net+=vTotal(r); }); ag.net={t:net,n:vv.length};
   ag.vC=sumK(vv,'ventaComida'); ag.vL=sumK(vv,'ventaLicor');
+  ag.vCer=sumK(vv,'ventaCerveza'); ag.vVin=sumK(vv,'ventaVino'); ag.vNA=sumK(vv,'ventaNA');
   ag.inv=sumK(vv,'invitados');
   ag.prop=sumK(vv,'propinas'); ag.imp=sumK(vv,'impuestos'); ag.grat=sumK(vv,'gratificacion');
   ag.desc=sumK(vv,'descuentos'); ag.voids=sumK(vv,'voids');
@@ -881,8 +884,8 @@ function deriv(ag,labor){
   d.ppa=ag.inv.t>0?ag.net.t/ag.inv.t:null;
   d.mealTot=(ag.des.n||ag.com.n||ag.cen.n||ag.noc.n)?ag.des.t+ag.com.t+ag.cen.t+ag.noc.t:null;
   d.cogs=(ag.gMC.n||ag.gML.n)?ag.gMC.t+ag.gML.t:null;
-  d.foodPct=(ag.gMC.n&&ag.vC.t>0)?ag.gMC.t/ag.vC.t*100:null;
-  d.liqPct=(ag.gML.n&&ag.vL.t>0)?ag.gML.t/ag.vL.t*100:null;
+  d.foodPct=(ag.gMC.n&&(ag.vC.t+ag.vNA.t)>0)?ag.gMC.t/(ag.vC.t+ag.vNA.t)*100:null;
+  d.liqPct=(ag.gML.n&&(ag.vL.t+ag.vCer.t+ag.vVin.t)>0)?ag.gML.t/(ag.vL.t+ag.vCer.t+ag.vVin.t)*100:null;
   d.labPct=(labor!==null&&ag.net.t>0)?labor/ag.net.t*100:null;
   d.prime=(d.cogs!==null&&labor!==null&&ag.net.t>0)?(d.cogs+labor)/ag.net.t*100:null;
   d.util=(ag.net.n||ag.gTot.n)?ag.net.t-ag.gTot.t-(labor||0):null;
@@ -1176,8 +1179,8 @@ async function renderPL(){
       '<div class="card"><div class="lbl">Operating result</div><div class="val '+(resultado<0?'neg':'money')+'">'+money(resultado)+'</div><div style="font-size:12px;color:var(--muted)">'+a+' to '+b+'</div></div></div>';
     h += '<div class="list" style="margin-bottom:14px">' +
       prow('Net sales', money(ventasT), '', true) +
-      prow('Food purchases', money(ag.gMC.t||0), pctT(ag.gMC.t||0)+(ag.vC.t>0?' · '+(ag.gMC.t/ag.vC.t*100).toFixed(1)+'% of food sales':'')) +
-      prow('Liquor purchases', money(ag.gML.t||0), pctT(ag.gML.t||0)+(ag.vL.t>0?' · '+(ag.gML.t/ag.vL.t*100).toFixed(1)+'% of liquor sales':'')) +
+      prow('Food purchases', money(ag.gMC.t||0), pctT(ag.gMC.t||0)+((ag.vC.t+ag.vNA.t)>0?' · '+(ag.gMC.t/(ag.vC.t+ag.vNA.t)*100).toFixed(1)+'% of food + N/A sales':'')) +
+      prow('Liquor purchases', money(ag.gML.t||0), pctT(ag.gML.t||0)+((ag.vL.t+ag.vCer.t+ag.vVin.t)>0?' · '+(ag.gML.t/(ag.vL.t+ag.vCer.t+ag.vVin.t)*100).toFixed(1)+'% of bar sales':'')) +
       prow('Labor', labor!=null?money(labor):'Not loaded', labor!=null?pctT(labor):'Payroll for this period is not in the app yet') +
       prow('Other operating expenses', money(otros), pctT(otros)) +
       prow('Fixed costs (prorated)', money(fijos), money(fijoMes)+'/month loaded') +
